@@ -147,35 +147,37 @@ stages:
                 echo $wgetRespCurrent
                 currentArtifact=${wgetRespCurrent##* }
 
-                # Download the previous release artifact for comparison
-                wgetRespPrev=$(download-artifact-from-pmc-apt "aziot-edge=$(get-latest-version-apt "aziot-edge" 2)" "$(System.ArtifactsDirectory)")
-                echo $wgetRespPrev
-                previousArtifact=${wgetRespPrev##* }
-                echo "[PASS] The artifacts can be downloaded from the Microsoft Linux Package Repository"
+                if $(IsCheckPreviousPkg); then
+                  # Download the previous release artifact for comparison
+                  wgetRespPrev=$(download-artifact-from-pmc-apt "aziot-edge=$(get-latest-version-apt "aziot-edge" 2)" "$(System.ArtifactsDirectory)")
+                  echo $wgetRespPrev
+                  previousArtifact=${wgetRespPrev##* }
+                  echo "[PASS] The artifacts can be downloaded from the Microsoft Linux Package Repository"
 
-                # Compare the size diff -- BEARWASHERE: TODO
-                curSize=$(stat -c%s $currentArtifact)
-                prevSize=$(stat -c%s $previousArtifact)
-                # BEARWASHERE -- $(edgelet.maxPercentAllowed) needs to be setup as pipeline var
-                maxAcceptingArtifactSize=$(echo "scale=0; ($prevSize*$(edgelet.maxPercentAllowed)/100)+$prevSize" | bc)
-                [[ "$curSize" -lt "$maxAcceptingArtifactSize" ]] || { echo "[FAIL] The current artifact size ($curSize) is more than $edgelet.maxPercentAllowed% larger than previous version file ($prevSize)"; exit 1; }
-                minAcceptingArtifactSize=$(echo "scale=0; $prevSize-($prevSize*$(edgelet.maxPercentAllowed)/100)" | bc)
-                [[ "$curSize" -gt "$minAcceptingArtifactSize" ]] || { echo "[FAIL] The current artifact size ($curSize) is more than $edgelet.maxPercentAllowed% smaller than previous version file ($prevSize)"; exit 1; }
-                echo "[PASS] The current artifact size ($curSize) is withing the range $minAcceptingArtifactSize Byte to $maxAcceptingArtifactSize Byte"
+                  # Compare the size diff -- BEARWASHERE: TODO
+                  curSize=$(stat -c%s $currentArtifact)
+                  prevSize=$(stat -c%s $previousArtifact)
+                  # BEARWASHERE -- $(edgelet.maxPercentAllowed) needs to be setup as pipeline var
+                  maxAcceptingArtifactSize=$(echo "scale=0; ($prevSize*$(edgelet.maxPercentAllowed)/100)+$prevSize" | bc)
+                  [[ "$curSize" -lt "$maxAcceptingArtifactSize" ]] || { echo "[FAIL] The current artifact size ($curSize) is more than $edgelet.maxPercentAllowed% larger than previous version file ($prevSize)"; exit 1; }
+                  minAcceptingArtifactSize=$(echo "scale=0; $prevSize-($prevSize*$(edgelet.maxPercentAllowed)/100)" | bc)
+                  [[ "$curSize" -gt "$minAcceptingArtifactSize" ]] || { echo "[FAIL] The current artifact size ($curSize) is more than $edgelet.maxPercentAllowed% smaller than previous version file ($prevSize)"; exit 1; }
+                  echo "[PASS] The current artifact size ($curSize) is withing the range $minAcceptingArtifactSize Byte to $maxAcceptingArtifactSize Byte"
 
-                # Compare the previous and current artifact content diff (by byte)
-                if cmp --silent $currentArtifact $previousArtifact; then
-                  echo "[FAIL] The current ($currentArtifact) and previous ($previousArtifact) artifacts are identical."
-                  exit 1;
+                  # Compare the previous and current artifact content diff (by byte)
+                  if cmp --silent $currentArtifact $previousArtifact; then
+                    echo "[FAIL] The current ($currentArtifact) and previous ($previousArtifact) artifacts are identical."
+                    exit 1;
+                  fi
+                  echo "[PASS] The current and previous artifact version have a different content"
                 fi
-                echo "[PASS] The current and previous artifact version have a different content"
 
                 # Compare the artifact if github and pmc are the same artifact
                 ghArtifact="$(System.ArtifactsDirectory)/aziot-edge_$(edgeletVersion)-1_$(os)_$(arch)_github.$(ext)"
                 if cmp --silent $currentArtifact $ghArtifact; then
-                  echo "[PASS] The PMC artifact and the GitHub artifacts are identical."
+                  echo "[PASS] The artifact content in PMC and the GitHub are identical."
                 else
-                  echo "[FAIL] The current ($currentArtifact) and the GitHub artifacts are NOT identical."
+                  echo "[PASS] The artifact content in PMC and the GitHub are NOT identical."
                   exit 1;
                 fi
 
