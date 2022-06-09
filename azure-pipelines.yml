@@ -109,7 +109,7 @@ stages:
               
               cmd="wget -q $uri -O $targetArtifactPath"
               echo "Running: $cmd"
-              $cmd && echo "[PASS] The artifact can be downloaded from the Microsoft Linux Package Repository"
+              $cmd
             }
 
             setup-config-apt()
@@ -151,6 +151,7 @@ stages:
                 wgetRespPrev=$(download-artifact-from-pmc-apt "aziot-edge=$(get-latest-version-apt "aziot-edge" 2)" "$(System.ArtifactsDirectory)")
                 echo $wgetRespPrev
                 previousArtifact=${wgetRespPrev##* }
+                echo "[PASS] The artifacts can be downloaded from the Microsoft Linux Package Repository"
 
                 # Compare the size diff -- BEARWASHERE: TODO
                 curSize=$(stat -c%s $currentArtifact)
