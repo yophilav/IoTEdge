@@ -168,7 +168,16 @@ stages:
                   echo "[FAIL] The current ($currentArtifact) and previous ($previousArtifact) artifacts are identical."
                   exit 1;
                 fi
-                echo "[PASS] The current and previous artifact content are not identical"
+                echo "[PASS] The current and previous artifact version have a different content"
+
+                # Compare the artifact if github and pmc are the same artifact
+                ghArtifact="$(System.ArtifactsDirectory)/aziot-edge_$(edgeletVersion)-1_$(os)_$(arch)_github.$(ext)"
+                if cmp --silent $currentArtifact $ghArtifact; then
+                  echo "[PASS] The PMC artifact and the GitHub artifacts are identical."
+                else
+                  echo "[FAIL] The current ($currentArtifact) and the GitHub artifacts are NOT identical."
+                  exit 1;
+                fi
 
               else
                 echo "Unsupported OS: $(os)"
