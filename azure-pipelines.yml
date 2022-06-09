@@ -109,7 +109,7 @@ stages:
               
               cmd="wget -q $uri -O $targetArtifactPath"
               echo "Running: $cmd"
-              $cmd
+              $cmd && echo "[PASS] The artifact can be downloaded from the Microsoft Linux Package Repository"
             }
 
             setup-config-apt()
@@ -160,12 +160,14 @@ stages:
                 [[ "$curSize" -lt "$maxAcceptingArtifactSize" ]] || { echo "[FAIL] The current artifact size ($curSize) is more than $edgelet.maxPercentAllowed% larger than previous version file ($prevSize)"; exit 1; }
                 minAcceptingArtifactSize=$(echo "scale=0; $prevSize-($prevSize*$(edgelet.maxPercentAllowed)/100)" | bc)
                 [[ "$curSize" -gt "$minAcceptingArtifactSize" ]] || { echo "[FAIL] The current artifact size ($curSize) is more than $edgelet.maxPercentAllowed% smaller than previous version file ($prevSize)"; exit 1; }
+                echo "[PASS] The current artifact size ($curSize) is withing the range $minAcceptingArtifactSize Byte to $maxAcceptingArtifactSize Byte"
 
                 # Compare the previous and current artifact content diff (by byte)
                 if cmp --silent $currentArtifact $previousArtifact; then
                   echo "[FAIL] The current ($currentArtifact) and previous ($previousArtifact) artifacts are identical."
                   exit 1;
                 fi
+                echo "[PASS] The current and previous artifact content are not identical"
 
               else
                 echo "Unsupported OS: $(os)"
@@ -181,12 +183,6 @@ stages:
               echo "Unsupported OS: $(os)"
               exit 1;
             fi
-
-            
-            # For Deb
-            sudo apt-get update
-
-            wget https://github.com/Azure/azure-iotedge/releases/download/$VERSION/aziot-edge_$VERSION-1_$(os)_$(arch).$(ext) -O $(System.ArtifactsDirectory)/aziot-edge_$(edgeletVersion)-1_$(os)_$(arch)_github.$(ext)
 
     #     - template: ../e2e/templates/e2e-setup.yaml
     #     - template: ../e2e/templates/e2e-run.yaml  
