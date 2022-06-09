@@ -43,16 +43,13 @@ stages:
       pool:
         name: 'Azure-IoT-Edge-1ES-Hosted-Linux'
         demands:
-        - ImageOverride -equals agent-aziotedge-ubuntu-20.04-docker
-      # BEARWASHERE -- Version is here for testing purpose only
-      variables:
-        edgeletVersion: '1.2.9'
+        - ImageOverride -equals agent-aziotedge-ubuntu-18.04-docker
       # BEARWASHERE -- have the test agents download a proper artifact for their OS & arch
       strategy:
         matrix:
-          Ubuntu2004-amd64:
+          Ubuntu1804-amd64:
+            os: ubuntu18.04
             arch: amd64
-            os: ubuntu20.04
             ext: deb
             target.iotedged: edgelet/target/release
 
@@ -60,6 +57,7 @@ stages:
       - task: Bash@3
         displayName: Download Edgelet GitHub
         condition: true
+        # BEARWASHERE -- "edgeletVersion" needs to be a pipeline variable
         inputs:
           targetType: 'inline'
           script: |
