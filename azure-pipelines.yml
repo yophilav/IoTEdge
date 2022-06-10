@@ -64,7 +64,7 @@ stages:
             wget https://github.com/Azure/azure-iotedge/releases/download/$(edgeletVersion)/aziot-edge_$(edgeletVersion)-1_$(os)_$(arch).$(ext) -O $(System.ArtifactsDirectory)/aziot-edge_$(edgeletVersion)-1_$(os)_$(arch)_github.$(ext)
 
       - task: Bash@3
-        displayName: Download Edgelet PMC
+        displayName: Artifacts Smoke Tests
         condition: true
         # BEARWASHERE -- TODO
         inputs:
@@ -116,24 +116,45 @@ stages:
               [[ "$incomingSize" -lt "$maxAcceptingArtifactSize" ]] || { echo "[FAIL] The current artifact size ($incomingSize) is more than $edgelet.maxPercentAllowed% larger than previous version file ($goldenSize)"; exit 1; }
               minAcceptingArtifactSize=$(echo "scale=0; $goldenSize-($goldenSize*$sizePercentThrehold/100)" | bc)
               [[ "$incomingSize" -gt "$minAcceptingArtifactSize" ]] || { echo "[FAIL] The current artifact size ($incomingSize) is more than $edgelet.maxPercentAllowed% smaller than previous version file ($goldenSize)"; exit 1; }
-              echo "[PASS] The current artifact size ($incomingSize) is withing the range $minAcceptingArtifactSize Byte to $maxAcceptingArtifactSize Byte" 
+              echo "[PASS] The current artifact size ($incomingSize) is withing the range of $minAcceptingArtifactSize Byte to $maxAcceptingArtifactSize Byte" 
             }
 
-            check-content-difference()
+            check-version-content-difference()
             {
               # Compare if the content of two files are difference. 
-              # Return true - if the two files are different
-              # Return false - if the two files are byte-exact identical.
+              #   Return true - if the two files are different
+              #   Return false - if the two files are byte-exact identical.
               #
               # $1 - path to file1
               # $2 - path to file2
 
               # Compare the previous and current artifact content diff (by byte)
-              if cmp --silent $currentArtifact $previousArtifact; then
-                echo "[FAIL] The current ($currentArtifact) and previous ($previousArtifact) artifacts are identical."
+              if cmp --silent $1 $2; then
+                echo "[FAIL] The current ($1) and previous ($2) artifacts are identical."
                 exit 1;
               fi
               echo "[PASS] The current and previous artifact version have a different content"
+            }
+
+            check-github-pmc-artifacts-similarity()
+            {
+              # Compare the artifact if github and pmc are the same artifact
+              #  Return true - if the artifacts from two sources are identical
+              #  Return false - if the artifacts from two sources are NOT identical
+              #
+              # $1 - path to PMC artifact
+              # $2 - path to Github artifact directory
+
+              echo ""
+              ghArtifact="$2/aziot-edge_$gitHubArtifactSuffix"
+              echo "The artifact from GitHub: $ghArtifact"
+              [[ -f "$ghArtifact" ]] || { echo "[FAIL] The artifact from GitHub doesn't exist ($ghArtifact)"; exit 1; }
+              if cmp --silent $1 $ghArtifact; then
+                echo "[PASS] The artifact content in PMC and the GitHub are identical."
+              else
+                echo "[FAIL] The artifact content in PMC and the GitHub are NOT identical."
+                exit 1;
+              fi
             }
 
             download-artifact-from-pmc-apt()
@@ -163,19 +184,35 @@ stages:
               # $1 - uri for the config deb package
               # Ref: https://docs.microsoft.com/en-us/azure/iot-edge/how-to-provision-single-device-linux-symmetric?view=iotedge-2020-11&tabs=azure-portal%2Cubuntu
 
+              echo "Setup source artifact repository:"
+              echo "$1"
               wget "$1" -O packages-microsoft-prod.deb
               sudo dpkg -i packages-microsoft-prod.deb
               rm packages-microsoft-prod.deb
               sudo apt-get update
             }
 
+            test-without-artifact()
+            {
+              pkgName=$1
+              edgeletVersion=$2
+
+              echo "Get the latest version string from linux repository"
+              # Note: $latestVersionApt includes the trailing revision: "1.2.10-1"
+              latestVersionApt=$(get-latest-version-apt "$pkgName" 1)
+              check-matching-version $latestVersionApt $edgeletVersion
+            }
+
             test-with-artifact()
             {
               # Trying my best to make sure the script can easily be updated to run locally
               pkgName=$1
+              edgeletVersion=$2
+
               artifactPath="$(System.ArtifactsDirectory)"
-              gitHubArtifactSuffix="$(edgeletVersion)-1_$(os)_$(arch)_github.$(ext)"
+              gitHubArtifactSuffix="$edgeletVersion-1_$(os)_$(arch)_github.$(ext)"
               sizePercentThrehold=$(edgelet.maxPercentAllowed)
+              isCheckPreviousPkg=$(IsCheckPreviousPkg)
 
               echo "Download PMC artifacts ($pkgName)"
               wgetRespCurrent=$(download-artifact-from-pmc-apt "$pkgName" "$artifactPath")
@@ -184,7 +221,7 @@ stages:
               echo "[PASS] The artifacts can be downloaded from the Microsoft Linux Package Repository"
               echo "The releasing artifact: $currentArtifact"
 
-              if $(IsCheckPreviousPkg); then
+              if $isCheckPreviousPkg; then
                 # Download the previous release artifact for comparison
                 wgetRespPrev=$(download-artifact-from-pmc-apt "$pkgName=$(get-latest-version-apt "$pkgName" 2)" "$artifactPath")
                 echo $wgetRespPrev
@@ -192,26 +229,10 @@ stages:
                 echo "The previous version artifact: $previousArtifact"
 
                 check-file-size-limit "$currentArtifact" "$previousArtifact" "sizePercentThrehold"
-
-                # Compare the previous and current artifact content diff (by byte)
-                if cmp --silent $currentArtifact $previousArtifact; then
-                  echo "[FAIL] The current ($currentArtifact) and previous ($previousArtifact) artifacts are identical."
-                  exit 1;
-                fi
-                echo "[PASS] The current and previous artifact version have a different content"
+                check-version-content-difference "$currentArtifact" "$previousArtifact"
               fi
 
-              # Compare the artifact if github and pmc are the same artifact
-              echo ""
-              ghArtifact="$(System.ArtifactsDirectory)/aziot-edge_$gitHubArtifactSuffix"
-              echo "The artifact from GitHub: $ghArtifact"
-              [[ -f "$ghArtifact" ]] || { echo "[FAIL] The artifact from GitHub doesn't exist ($ghArtifact)"; exit 1; }
-              if cmp --silent $currentArtifact $ghArtifact; then
-                echo "[PASS] The artifact content in PMC and the GitHub are identical."
-              else
-                echo "[FAIL] The artifact content in PMC and the GitHub are NOT identical."
-                exit 1;
-              fi
+              check-github-pmc-artifacts-similarity "$currentArtifact" "$artifactPath"
             }
 
             ####### Main
@@ -223,18 +244,9 @@ stages:
 
                 echo ""
               elif [[ "$(os)" == *"18.04" ]]; then
-                echo "Setup source artifact repository"
                 setup-config-apt "https://packages.microsoft.com/config/ubuntu/18.04/multiarch/packages-microsoft-prod.deb"
-
-                echo "Get the latest version string from linux repository"
-                # Note: $latestVersionApt includes the trailing revision: "1.2.10-1"
-                latestVersionApt=$(get-latest-version-apt "aziot-edge" 1)
-                check-matching-version $latestVersionApt $edgeletVersion
-
-                # BEARWASHERE -- test-with-artifact
-                test-with-artifact "aziot-edge"
-                
-
+                test-without-artifact "aziot-edge" "$(edgeletVersion)"
+                test-with-artifact "aziot-edge" "$(edgeletVersion)"
               else
                 echo "Unsupported OS: $(os)"
                 exit 1;
