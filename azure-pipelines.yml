@@ -84,11 +84,13 @@ stages:
               # Compare if ($2) is a substring of ($1)
               # $1 - version string 1 (string)
               # $2 - version string 2 (string)
+              # $3 - pkgName
+              
               if [[ ! "$1" =~ "$2" ]]; then
-                echo "[FAIL] Mismatch Version: The latest edgelet package version on linux repo is $1 (expecting: $2)"
+                echo "[FAIL] Mismatch Version: The latest $pkgName package version on linux repo is $1 (expecting: $2)"
                 exit 1
               fi
-              echo "[PASS] Linux Repository Artifact Version Check ($1)"
+              echo "[PASS] $pkgName linux repository artifact version check ($1)"
               echo ""
             }
 
@@ -200,7 +202,7 @@ stages:
               echo "Get the latest version string from linux repository"
               # Note: $latestVersionApt includes the trailing revision: "1.2.10-1"
               latestVersionApt=$(get-latest-version-apt "$pkgName" 1)
-              check-matching-version $latestVersionApt $edgeletVersion
+              check-matching-version "$latestVersionApt" "$edgeletVersion" "$pkgName"
             }
 
             test-with-artifact()
