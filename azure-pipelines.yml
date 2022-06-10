@@ -130,10 +130,7 @@ stages:
               # Trying my best to make sure the script can easily be updated to run locally
               pkgName=$1
               artifactPath="$(System.ArtifactsDirectory)"
-              edgeletVersion=$(edgeletVersion)
-              os=$(os)
-              arch=$(arch)
-              ext=$(ext)
+              gitHubArtifactSuffix="$(edgeletVersion)_$(os)_$(arch)_github.$(ext)"
               sizePercentThrehold=$(edgelet.maxPercentAllowed)
 
               echo "Download PMC artifacts ($pkgName)"
@@ -170,7 +167,7 @@ stages:
 
               # Compare the artifact if github and pmc are the same artifact
               echo ""
-              ghArtifact="$(System.ArtifactsDirectory)/aziot-edge_$edgeletVersion-1_$os_$arch_github.$ext"
+              ghArtifact="$(System.ArtifactsDirectory)/aziot-edge_$gitHubArtifactSuffix"
               echo "The artifact from GitHub: $ghArtifact"
               if cmp --silent $currentArtifact $ghArtifact; then
                 echo "[PASS] The artifact content in PMC and the GitHub are identical."
