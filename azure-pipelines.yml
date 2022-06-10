@@ -62,6 +62,7 @@ stages:
           targetType: 'inline'
           script: |
             wget https://github.com/Azure/azure-iotedge/releases/download/$(edgeletVersion)/aziot-edge_$(edgeletVersion)-1_$(os)_$(arch).$(ext) -O $(System.ArtifactsDirectory)/aziot-edge_$(edgeletVersion)-1_$(os)_$(arch)_github.$(ext)
+            wget https://github.com/Azure/azure-iotedge/releases/download/$(edgeletVersion)/aziot-identity-service_$(iisVersion)-1_$(os)_$(arch).$(ext) -O $(System.ArtifactsDirectory)/aziot-identity-service_$(iisVersion)-1_$(os)_$(arch)_github.$(ext)
 
       - task: Bash@3
         displayName: Artifacts Smoke Tests
@@ -249,6 +250,9 @@ stages:
                 setup-config-apt "https://packages.microsoft.com/config/ubuntu/18.04/multiarch/packages-microsoft-prod.deb"
                 test-without-artifact "aziot-edge" "$(edgeletVersion)"
                 test-with-artifact "aziot-edge" "$(edgeletVersion)"
+
+                test-without-artifact "aziot-identity-service" "$(edgeletVersion)"
+                test-with-artifact "aziot-identity-service" "$(edgeletVersion)"
               else
                 echo "Unsupported OS: $(os)"
                 exit 1;
