@@ -140,12 +140,14 @@ stages:
               wgetRespCurrent=$(download-artifact-from-pmc-apt "$pkgName" "$artifactPath")
               echo $wgetRespCurrent
               currentArtifact=${wgetRespCurrent##* }
+              echo "The releasing artifact: $currentArtifact"
 
               if $(IsCheckPreviousPkg); then
                 # Download the previous release artifact for comparison
                 wgetRespPrev=$(download-artifact-from-pmc-apt "$pkgName=$(get-latest-version-apt "$pkgName" 2)" "$artifactPath")
                 echo $wgetRespPrev
                 previousArtifact=${wgetRespPrev##* }
+                echo "The previous version artifact: $previousArtifact"
                 echo "[PASS] The artifacts can be downloaded from the Microsoft Linux Package Repository"
 
                 # Compare the size diff
@@ -167,11 +169,13 @@ stages:
               fi
 
               # Compare the artifact if github and pmc are the same artifact
+              echo ""
               ghArtifact="$(System.ArtifactsDirectory)/aziot-edge_$edgeletVersion-1_$os_$arch_github.$ext"
+              echo "The artifact from GitHub: $ghArtifact"
               if cmp --silent $currentArtifact $ghArtifact; then
                 echo "[PASS] The artifact content in PMC and the GitHub are identical."
               else
-                echo "[PASS] The artifact content in PMC and the GitHub are NOT identical."
+                echo "[FAIL] The artifact content in PMC and the GitHub are NOT identical."
                 exit 1;
               fi
             }
