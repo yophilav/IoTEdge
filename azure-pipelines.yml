@@ -130,7 +130,7 @@ stages:
               # Trying my best to make sure the script can easily be updated to run locally
               pkgName=$1
               artifactPath="$(System.ArtifactsDirectory)"
-              gitHubArtifactSuffix="$(edgeletVersion)_$(os)_$(arch)_github.$(ext)"
+              gitHubArtifactSuffix="$(edgeletVersion)-1_$(os)_$(arch)_github.$(ext)"
               sizePercentThrehold=$(edgelet.maxPercentAllowed)
 
               echo "Download PMC artifacts ($pkgName)"
