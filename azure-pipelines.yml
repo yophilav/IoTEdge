@@ -125,6 +125,57 @@ stages:
               sudo apt-get update
             }
 
+            test-with-artifact()
+            {
+              # Trying my best to make sure the script can easily be updated to run locally
+              pkgName=$1
+              artifactPath="$(System.ArtifactsDirectory)"
+              edgeletVersion=$(edgeletVersion)
+              os=$(os)
+              arch=$(arch)
+              ext=$(ext)
+              sizePercentThrehold=$(edgelet.maxPercentAllowed)
+
+              echo "Download PMC artifacts ($pkgName)"
+              wgetRespCurrent=$(download-artifact-from-pmc-apt "$pkgName" "$artifactPath")
+              echo $wgetRespCurrent
+              currentArtifact=${wgetRespCurrent##* }
+
+              if $(IsCheckPreviousPkg); then
+                # Download the previous release artifact for comparison
+                wgetRespPrev=$(download-artifact-from-pmc-apt "$pkgName=$(get-latest-version-apt "$pkgName" 2)" "$artifactPath")
+                echo $wgetRespPrev
+                previousArtifact=${wgetRespPrev##* }
+                echo "[PASS] The artifacts can be downloaded from the Microsoft Linux Package Repository"
+
+                # Compare the size diff
+                curSize=$(stat -c%s $currentArtifact)
+                prevSize=$(stat -c%s $previousArtifact)
+
+                maxAcceptingArtifactSize=$(echo "scale=0; ($prevSize*$sizePercentThrehold/100)+$prevSize" | bc)
+                [[ "$curSize" -lt "$maxAcceptingArtifactSize" ]] || { echo "[FAIL] The current artifact size ($curSize) is more than $edgelet.maxPercentAllowed% larger than previous version file ($prevSize)"; exit 1; }
+                minAcceptingArtifactSize=$(echo "scale=0; $prevSize-($prevSize*$sizePercentThrehold/100)" | bc)
+                [[ "$curSize" -gt "$minAcceptingArtifactSize" ]] || { echo "[FAIL] The current artifact size ($curSize) is more than $edgelet.maxPercentAllowed% smaller than previous version file ($prevSize)"; exit 1; }
+                echo "[PASS] The current artifact size ($curSize) is withing the range $minAcceptingArtifactSize Byte to $maxAcceptingArtifactSize Byte"
+
+                # Compare the previous and current artifact content diff (by byte)
+                if cmp --silent $currentArtifact $previousArtifact; then
+                  echo "[FAIL] The current ($currentArtifact) and previous ($previousArtifact) artifacts are identical."
+                  exit 1;
+                fi
+                echo "[PASS] The current and previous artifact version have a different content"
+              fi
+
+              # Compare the artifact if github and pmc are the same artifact
+              ghArtifact="$(System.ArtifactsDirectory)/aziot-edge_$edgeletVersion-1_$os_$arch_github.$ext"
+              if cmp --silent $currentArtifact $ghArtifact; then
+                echo "[PASS] The artifact content in PMC and the GitHub are identical."
+              else
+                echo "[PASS] The artifact content in PMC and the GitHub are NOT identical."
+                exit 1;
+              fi
+            }
+
             ####### Main
             if [[ "$(os)" == "ubuntu"* ]]; then
             # Ubuntu
@@ -142,44 +193,9 @@ stages:
                 latestVersionApt=$(get-latest-version-apt "aziot-edge" 1)
                 check-matching-version $latestVersionApt $edgeletVersion
 
-                echo "Download PMC artifacts"
-                wgetRespCurrent=$(download-artifact-from-pmc-apt "aziot-edge" "$(System.ArtifactsDirectory)")
-                echo $wgetRespCurrent
-                currentArtifact=${wgetRespCurrent##* }
-
-                if $(IsCheckPreviousPkg); then
-                  # Download the previous release artifact for comparison
-                  wgetRespPrev=$(download-artifact-from-pmc-apt "aziot-edge=$(get-latest-version-apt "aziot-edge" 2)" "$(System.ArtifactsDirectory)")
-                  echo $wgetRespPrev
-                  previousArtifact=${wgetRespPrev##* }
-                  echo "[PASS] The artifacts can be downloaded from the Microsoft Linux Package Repository"
-
-                  # Compare the size diff -- BEARWASHERE: TODO
-                  curSize=$(stat -c%s $currentArtifact)
-                  prevSize=$(stat -c%s $previousArtifact)
-                  # BEARWASHERE -- $(edgelet.maxPercentAllowed) needs to be setup as pipeline var
-                  maxAcceptingArtifactSize=$(echo "scale=0; ($prevSize*$(edgelet.maxPercentAllowed)/100)+$prevSize" | bc)
-                  [[ "$curSize" -lt "$maxAcceptingArtifactSize" ]] || { echo "[FAIL] The current artifact size ($curSize) is more than $edgelet.maxPercentAllowed% larger than previous version file ($prevSize)"; exit 1; }
-                  minAcceptingArtifactSize=$(echo "scale=0; $prevSize-($prevSize*$(edgelet.maxPercentAllowed)/100)" | bc)
-                  [[ "$curSize" -gt "$minAcceptingArtifactSize" ]] || { echo "[FAIL] The current artifact size ($curSize) is more than $edgelet.maxPercentAllowed% smaller than previous version file ($prevSize)"; exit 1; }
-                  echo "[PASS] The current artifact size ($curSize) is withing the range $minAcceptingArtifactSize Byte to $maxAcceptingArtifactSize Byte"
-
-                  # Compare the previous and current artifact content diff (by byte)
-                  if cmp --silent $currentArtifact $previousArtifact; then
-                    echo "[FAIL] The current ($currentArtifact) and previous ($previousArtifact) artifacts are identical."
-                    exit 1;
-                  fi
-                  echo "[PASS] The current and previous artifact version have a different content"
-                fi
-
-                # Compare the artifact if github and pmc are the same artifact
-                ghArtifact="$(System.ArtifactsDirectory)/aziot-edge_$(edgeletVersion)-1_$(os)_$(arch)_github.$(ext)"
-                if cmp --silent $currentArtifact $ghArtifact; then
-                  echo "[PASS] The artifact content in PMC and the GitHub are identical."
-                else
-                  echo "[PASS] The artifact content in PMC and the GitHub are NOT identical."
-                  exit 1;
-                fi
+                # BEARWASHERE -- test-with-artifact
+                test-with-artifact "aziot-edge"
+                
 
               else
                 echo "Unsupported OS: $(os)"
