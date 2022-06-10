@@ -104,11 +104,10 @@ stages:
 
               incomingArtifact=$1
               goldenArtifact=$2
-              sizePercentThrehold=$3
 
               # Check if the is between 0 <= sizePercentThrehold <= 100
-              [[ "100" -lt "$sizePercentThrehold" ]] && { echo "[FAIL] The \$sizePercentThrehold needs to be lesser than 100"; exit 1; }
-              [[ "0" -gt "$sizePercentThrehold" ]] && { echo "[FAIL] The \$sizePercentThrehold needs to be greater than 0"; exit 1; }
+              [[ "100" -lt "$3" ]] && { echo "[FAIL] The \$sizePercentThrehold ($3) needs to be lesser than 100"; exit 1; }
+              [[ "0" -gt "$3" ]] && { echo "[FAIL] The \$sizePercentThrehold ($3) needs to be greater than 0"; exit 1; }
 
               # Do the actual size checking
               incomingSize=$(stat -c%s $incomingArtifact)
@@ -129,8 +128,12 @@ stages:
               # $1 - path to file1
               # $2 - path to file2
 
-
-
+              # Compare the previous and current artifact content diff (by byte)
+              if cmp --silent $currentArtifact $previousArtifact; then
+                echo "[FAIL] The current ($currentArtifact) and previous ($previousArtifact) artifacts are identical."
+                exit 1;
+              fi
+              echo "[PASS] The current and previous artifact version have a different content"
             }
 
             download-artifact-from-pmc-apt()
