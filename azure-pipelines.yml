@@ -107,8 +107,8 @@ stages:
               sizePercentThrehold=$3
 
               # Check if the is between 0 < sizePercentThrehold < 100
-              [[ "$sizePercentThrehold" -lt "100" ]] || { echo "[FAIL] The \$sizePercentThrehold ($sizePercentThrehold) needs to be lesser than 100"; exit 1; }
-              [[ "$sizePercentThrehold" -gt "0" ]] || { echo "[FAIL] The \$sizePercentThrehold ($sizePercentThrehold) needs to be greater than 0"; exit 1; }
+              [[ "$sizePercentThrehold" -lt "100" ]] || { echo "[FAIL] The \$sizePercentThrehold needs to be lesser than 100"; exit 1; }
+              [[ "$sizePercentThrehold" -gt "0" ]] || { echo "[FAIL] The \$sizePercentThrehold needs to be greater than 0"; exit 1; }
 
               # Do the actual size checking
               incomingSize=$(stat -c%s $incomingArtifact)
