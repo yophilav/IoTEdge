@@ -248,11 +248,14 @@ stages:
                 echo ""
               elif [[ "$(os)" == *"18.04" ]]; then
                 setup-config-apt "https://packages.microsoft.com/config/ubuntu/18.04/multiarch/packages-microsoft-prod.deb"
+                echo "Aziot-edge"
                 test-without-artifact "aziot-edge" "$(edgeletVersion)"
                 test-with-artifact "aziot-edge" "$(edgeletVersion)"
 
-                test-without-artifact "aziot-identity-service" "$(edgeletVersion)"
-                test-with-artifact "aziot-identity-service" "$(edgeletVersion)"
+                echo ""
+                
+                test-without-artifact "aziot-identity-service" "$(iisVersion)"
+                test-with-artifact "aziot-identity-service" "$(iisVersion)"
               else
                 echo "Unsupported OS: $(os)"
                 exit 1;
