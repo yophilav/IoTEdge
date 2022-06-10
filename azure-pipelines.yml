@@ -169,6 +169,7 @@ stages:
               echo ""
               ghArtifact="$(System.ArtifactsDirectory)/aziot-edge_$gitHubArtifactSuffix"
               echo "The artifact from GitHub: $ghArtifact"
+              [[ -f "$ghArtifact" ]] || { echo "[FAIL] The artifact from GitHub doesn't exist ($ghArtifact)"; exit 1; }
               if cmp --silent $currentArtifact $ghArtifact; then
                 echo "[PASS] The artifact content in PMC and the GitHub are identical."
               else
