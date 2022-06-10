@@ -92,6 +92,34 @@ stages:
               echo ""
             }
 
+            check-file-size-limit()
+            {
+              # Compare if the incoming file size is within $sizePercentThrehold percent of
+              # the golden package standard. That is 
+              #  goldenPkgSize*(100-sizePercentThrehold)/100 < incomingPkgSize < goldenPkgSize*(100+sizePercentThrehold)/100
+              #
+              # $1 - incoming artifact
+              # $2 - golden standard artifact
+              # $3 - acceptable size difference percentage as a whole integer number
+
+              incomingArtifact=$1
+              goldenArtifact=$2
+              sizePercentThrehold=$3
+
+              # Check if the is between 0 < sizePercentThrehold < 100
+              [[ "$sizePercentThrehold" -lt "100" ]] || { echo "[FAIL] The \$sizePercentThrehold ($sizePercentThrehold) needs to be lesser than 100"; exit 1; }
+              [[ "$sizePercentThrehold" -gt "0" ]] || { echo "[FAIL] The \$sizePercentThrehold ($sizePercentThrehold) needs to be greater than 0"; exit 1; }
+
+              # Do the actual size checking
+              incomingSize=$(stat -c%s $incomingArtifact)
+              goldenSize=$(stat -c%s $goldenArtifact)
+              maxAcceptingArtifactSize=$(echo "scale=0; ($goldenSize*$sizePercentThrehold/100)+$goldenSize" | bc)
+              [[ "$incomingSize" -lt "$maxAcceptingArtifactSize" ]] || { echo "[FAIL] The current artifact size ($incomingSize) is more than $edgelet.maxPercentAllowed% larger than previous version file ($goldenSize)"; exit 1; }
+              minAcceptingArtifactSize=$(echo "scale=0; $goldenSize-($goldenSize*$sizePercentThrehold/100)" | bc)
+              [[ "$incomingSize" -gt "$minAcceptingArtifactSize" ]] || { echo "[FAIL] The current artifact size ($incomingSize) is more than $edgelet.maxPercentAllowed% smaller than previous version file ($goldenSize)"; exit 1; }
+              echo "[PASS] The current artifact size ($incomingSize) is withing the range $minAcceptingArtifactSize Byte to $maxAcceptingArtifactSize Byte" 
+            }
+
             download-artifact-from-pmc-apt()
             {
               # Download artifact for a package named ($1) using uri acquired by `apt` to a location ($2).
@@ -137,6 +165,7 @@ stages:
               wgetRespCurrent=$(download-artifact-from-pmc-apt "$pkgName" "$artifactPath")
               echo $wgetRespCurrent
               currentArtifact=${wgetRespCurrent##* }
+              echo "[PASS] The artifacts can be downloaded from the Microsoft Linux Package Repository"
               echo "The releasing artifact: $currentArtifact"
 
               if $(IsCheckPreviousPkg); then
@@ -145,17 +174,8 @@ stages:
                 echo $wgetRespPrev
                 previousArtifact=${wgetRespPrev##* }
                 echo "The previous version artifact: $previousArtifact"
-                echo "[PASS] The artifacts can be downloaded from the Microsoft Linux Package Repository"
 
-                # Compare the size diff
-                curSize=$(stat -c%s $currentArtifact)
-                prevSize=$(stat -c%s $previousArtifact)
-
-                maxAcceptingArtifactSize=$(echo "scale=0; ($prevSize*$sizePercentThrehold/100)+$prevSize" | bc)
-                [[ "$curSize" -lt "$maxAcceptingArtifactSize" ]] || { echo "[FAIL] The current artifact size ($curSize) is more than $edgelet.maxPercentAllowed% larger than previous version file ($prevSize)"; exit 1; }
-                minAcceptingArtifactSize=$(echo "scale=0; $prevSize-($prevSize*$sizePercentThrehold/100)" | bc)
-                [[ "$curSize" -gt "$minAcceptingArtifactSize" ]] || { echo "[FAIL] The current artifact size ($curSize) is more than $edgelet.maxPercentAllowed% smaller than previous version file ($prevSize)"; exit 1; }
-                echo "[PASS] The current artifact size ($curSize) is withing the range $minAcceptingArtifactSize Byte to $maxAcceptingArtifactSize Byte"
+                check-file-size-limit "$currentArtifact" "$previousArtifact" "sizePercentThrehold"
 
                 # Compare the previous and current artifact content diff (by byte)
                 if cmp --silent $currentArtifact $previousArtifact; then
