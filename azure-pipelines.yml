@@ -147,9 +147,10 @@ stages:
               #
               # $1 - path to PMC artifact
               # $2 - path to Github artifact directory
+              # $3 - package name
 
               echo ""
-              ghArtifact="$2/aziot-edge_$gitHubArtifactSuffix"
+              ghArtifact="$2/$3_$gitHubArtifactSuffix"
               echo "The artifact from GitHub: $ghArtifact"
               [[ -f "$ghArtifact" ]] || { echo "[FAIL] The artifact from GitHub doesn't exist ($ghArtifact)"; exit 1; }
               if cmp --silent $1 $ghArtifact; then
@@ -235,7 +236,7 @@ stages:
                 check-version-content-difference "$currentArtifact" "$previousArtifact"
               fi
 
-              check-github-pmc-artifacts-similarity "$currentArtifact" "$artifactPath"
+              check-github-pmc-artifacts-similarity "$currentArtifact" "$artifactPath" "$pkgName"
             }
 
             ####### Main
