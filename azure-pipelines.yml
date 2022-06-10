@@ -106,9 +106,9 @@ stages:
               goldenArtifact=$2
               sizePercentThrehold=$3
 
-              # Check if the is between 0 < sizePercentThrehold < 100
-              [[ "$sizePercentThrehold" -lt "100" ]] || { echo "[FAIL] The \$sizePercentThrehold needs to be lesser than 100"; exit 1; }
-              [[ "$sizePercentThrehold" -gt "0" ]] || { echo "[FAIL] The \$sizePercentThrehold needs to be greater than 0"; exit 1; }
+              # Check if the is between 0 <= sizePercentThrehold <= 100
+              [[ "100" -lt "$sizePercentThrehold" ]] && { echo "[FAIL] The \$sizePercentThrehold needs to be lesser than 100"; exit 1; }
+              [[ "0" -gt "$sizePercentThrehold" ]] && { echo "[FAIL] The \$sizePercentThrehold needs to be greater than 0"; exit 1; }
 
               # Do the actual size checking
               incomingSize=$(stat -c%s $incomingArtifact)
@@ -118,6 +118,19 @@ stages:
               minAcceptingArtifactSize=$(echo "scale=0; $goldenSize-($goldenSize*$sizePercentThrehold/100)" | bc)
               [[ "$incomingSize" -gt "$minAcceptingArtifactSize" ]] || { echo "[FAIL] The current artifact size ($incomingSize) is more than $edgelet.maxPercentAllowed% smaller than previous version file ($goldenSize)"; exit 1; }
               echo "[PASS] The current artifact size ($incomingSize) is withing the range $minAcceptingArtifactSize Byte to $maxAcceptingArtifactSize Byte" 
+            }
+
+            check-content-difference()
+            {
+              # Compare if the content of two files are difference. 
+              # Return true - if the two files are different
+              # Return false - if the two files are byte-exact identical.
+              #
+              # $1 - path to file1
+              # $2 - path to file2
+
+
+
             }
 
             download-artifact-from-pmc-apt()
