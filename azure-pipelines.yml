@@ -76,7 +76,7 @@ stages:
               # Use the 'apt' to get the latest version string from the linux repository
               # $1 - package name
               # $2 - the Nth latest package (ex. 1 is the latest, 2 is the second latest), Optional
-              apt-cache madison $1 | awk -F '|' '{print $2}' | sort --version-sort -r | sed -n ${2:-1}p | tr -d '[:space:]'
+              apt-cache madison $1 | awk -F '|' '{gsub(/ /,"",$2); print $2}' | sort --version-sort -r | sed -n ${2:-1}p
             }
 
             check-matching-version()
