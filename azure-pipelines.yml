@@ -44,7 +44,7 @@ stages:
         matrix:
           Debian11-armhf:
             pool_name: 'Azure-IoT-Edge-Core'
-            agent_demands: 'deb11-e2e-tests'
+            agent_demands: 'deb11-e2e-tests -equals true'
             os: debian11
             arch: armhf
             ext: deb
