@@ -228,6 +228,9 @@ stages:
               ls /etc/apt/sources.list.d/
               echo ""
               
+              # Force install new deps without asking
+              sudo sed -i 's/# conf_force_conffnew=YES/conf_force_conffnew=YES/g' /etc/ucf.conf
+
               for file in $(ls /etc/apt/sources.list.d/*.list)
               do
                 sudo sed -i 's/bionic/focal/g' $file
