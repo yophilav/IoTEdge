@@ -224,6 +224,7 @@ stages:
               currentArtifact=${wgetRespCurrent##* }
               echo "[PASS] The artifacts can be downloaded from the Microsoft Linux Package Repository"
               echo "The releasing artifact: $currentArtifact"
+              echo ""
 
               if $isCheckPreviousPkg; then
                 # Download the previous release artifact for comparison
@@ -253,7 +254,7 @@ stages:
                 test-without-artifact "aziot-edge" "$(edgeletVersion)"
                 test-with-artifact "aziot-edge" "$(edgeletVersion)"
 
-                echo ""
+                echo $'\n\n================================================\n\n'
                 
                 test-without-artifact "aziot-identity-service" "$(iisVersion)"
                 test-with-artifact "aziot-identity-service" "$(iisVersion)"
