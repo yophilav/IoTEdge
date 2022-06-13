@@ -240,8 +240,6 @@ stages:
               # $1 - uri for the config deb package
               # Ref: https://docs.microsoft.com/en-us/azure/iot-edge/how-to-provision-single-device-linux-symmetric?view=iotedge-2020-11&tabs=azure-portal%2Cubuntu
 
-              DEBIAN_FRONTEND=noninteractive
-
               echo "BEARWASHERE -- Pre-apt-config"
               sudo sudo apt-get update
               echo ""
@@ -254,7 +252,7 @@ stages:
               echo "Setup source artifact repository:"
               echo "$1"
               wget "$1" -O packages-microsoft-prod.deb &&
-              sudo dpkg -i packages-microsoft-prod.deb &&
+              sudo apt-get install -y packages-microsoft-prod.deb &&
               rm packages-microsoft-prod.deb &&
               sudo apt-get update -y
             }
