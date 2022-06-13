@@ -207,6 +207,22 @@ stages:
               $cmd
             }
 
+            wait-for-dpkg-lock()
+            {
+              # $1 - wait time in seconds
+
+              ps aux | grep -i apt
+              waitAttempts=$1
+              sleepDuration=10
+              for (( i=0; $i<$waitAttempts; i++ ))
+              do
+                if [[ $(ps aux | grep -c apt.systemd.daily) == 1 ]]; then
+                  break
+                fi
+                sleep $sleepDuration
+              done
+            }
+
             setup-config-apt()
             {
               # Download the `apt` config file from the provided uri ($1), install it, and update the apt
@@ -218,8 +234,8 @@ stages:
               sudo sudo apt-get update
               echo ""
               echo ""
-              echo "BEARWASHERE -- apt"
-              ps aux | grep -i apt
+              echo "BEARWASHERE -- wait for pkg"
+              wait-for-dpkg-lock 120
               echo ""
               echo ""
 
