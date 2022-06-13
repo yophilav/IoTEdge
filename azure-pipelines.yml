@@ -261,30 +261,8 @@ stages:
             # Ubuntu
               if [[ "$(os)" == *"20.04" ]]; then
                 setup-config-apt "https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb"
-
-                echo $'\n\n================================================\n\n'
-                echo "Aziot-edge"
-                test-released-metadata "aziot-edge" "$(edgeletVersion)"
-                test-released-artifact "aziot-edge" "$(edgeletVersion)"
-
-                echo $'\n\n================================================\n\n'
-                echo "Aziot-identity-service"
-                test-released-metadata "aziot-identity-service" "$(iisVersion)"
-                test-released-artifact "aziot-identity-service" "$(iisVersion)"
-
               elif [[ "$(os)" == *"18.04" ]]; then
-
                 setup-config-apt "https://packages.microsoft.com/config/ubuntu/18.04/multiarch/packages-microsoft-prod.deb"
-
-                echo $'\n\n================================================\n\n'
-                echo "Aziot-edge"
-                test-released-metadata "aziot-edge" "$(edgeletVersion)"
-                test-released-artifact "aziot-edge" "$(edgeletVersion)"
-
-                echo $'\n\n================================================\n\n'
-                echo "Aziot-identity-service"
-                test-released-metadata "aziot-identity-service" "$(iisVersion)"
-                test-released-artifact "aziot-identity-service" "$(iisVersion)"
               else
                 echo "Unsupported OS: $(os)"
                 exit 1;
@@ -295,20 +273,20 @@ stages:
               curl https://packages.microsoft.com/config/debian/11/packages-microsoft-prod.deb > ./packages-microsoft-prod.deb
               sudo apt install ./packages-microsoft-prod.deb
               sudo apt-get update
-
-              echo $'\n\n================================================\n\n'
-              echo "Aziot-edge"
-              test-released-metadata "aziot-edge" "$(edgeletVersion)"
-              test-released-artifact "aziot-edge" "$(edgeletVersion)"
-
-              echo $'\n\n================================================\n\n'
-              echo "Aziot-identity-service"
-              test-released-metadata "aziot-identity-service" "$(iisVersion)"
-              test-released-artifact "aziot-identity-service" "$(iisVersion)"
             else
               echo "Unsupported OS: $(os)"
               exit 1;
             fi
+
+            echo $'\n\n================================================\n\n'
+            echo "Aziot-edge"
+            test-released-metadata "aziot-edge" "$(edgeletVersion)"
+            test-released-artifact "aziot-edge" "$(edgeletVersion)"
+
+            echo $'\n\n================================================\n\n'
+            echo "Aziot-identity-service"
+            test-released-metadata "aziot-identity-service" "$(iisVersion)"
+            test-released-artifact "aziot-identity-service" "$(iisVersion)"
 
     #     - template: ../e2e/templates/e2e-setup.yaml
     #     - template: ../e2e/templates/e2e-run.yaml  
