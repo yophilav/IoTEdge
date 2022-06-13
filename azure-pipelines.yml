@@ -228,9 +228,6 @@ stages:
               ls /etc/apt/sources.list.d/
               echo ""
               
-              # Force install new deps without asking
-              sudo sed -i 's/# conf_force_conffnew=YES/conf_force_conffnew=YES/g' /etc/ucf.conf
-
               for file in $(ls /etc/apt/sources.list.d/*.list)
               do
                 sudo sed -i 's/bionic/focal/g' $file
@@ -264,7 +261,7 @@ stages:
               echo "Setup source artifact repository:"
               echo "$1"
               wget "$1" -O packages-microsoft-prod.deb &&
-              sudo dpkg -i packages-microsoft-prod.deb &&
+              sudo DEBIAN_FRONTEND=noninteractive dpkg -i packages-microsoft-prod.deb &&
               rm packages-microsoft-prod.deb &&
               sudo apt-get update -y
             }
