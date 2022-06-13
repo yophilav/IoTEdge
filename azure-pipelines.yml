@@ -209,9 +209,9 @@ stages:
 
             wait-for-dpkg-lock()
             {
+              # Wait for task 'apt.systemd.daily' to be done before proceed with dependencies installation.
               # $1 - wait time in seconds
 
-              ps aux | grep -i apt
               waitAttempts=$1
               sleepDuration=10
               for (( i=0; $i<$waitAttempts; i++ ))
@@ -249,14 +249,8 @@ stages:
               # $1 - uri for the config deb package
               # Ref: https://docs.microsoft.com/en-us/azure/iot-edge/how-to-provision-single-device-linux-symmetric?view=iotedge-2020-11&tabs=azure-portal%2Cubuntu
 
-              echo "BEARWASHERE -- Pre-apt-config"
-              sudo sudo apt-get update
-              echo ""
-              echo ""
-              echo "BEARWASHERE -- wait for pkg"
+              # For ARM machine, we need to wait for the apt-get daily update to be done first before we can proceed.
               wait-for-dpkg-lock 120
-              echo ""
-              echo ""
 
               echo "Setup source artifact repository:"
               echo "$1"
