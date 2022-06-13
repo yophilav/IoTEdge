@@ -230,7 +230,7 @@ stages:
               
               for file in $(ls /etc/apt/sources.list.d/*.list)
               do
-                sudo sed -i 's/bionic/focal/g' /etc/apt/sources.list.d/$file
+                sudo sed -i 's/bionic/focal/g' $file
               done
 
               sudo sed -i 's/bionic/focal/g' /etc/apt/sources.list && \
@@ -239,6 +239,7 @@ stages:
               sudo apt update -y
               # BEARWASHERE -- I don't think this is necessary?
               # sudo apt -y dist-upgrade
+              sudo apt-get install -f
             }
 
             setup-config-apt()
@@ -260,7 +261,7 @@ stages:
               echo "Setup source artifact repository:"
               echo "$1"
               wget "$1" -O packages-microsoft-prod.deb &&
-              sudo apt-get install -y packages-microsoft-prod.deb &&
+              sudo dpkg -i packages-microsoft-prod.deb &&
               rm packages-microsoft-prod.deb &&
               sudo apt-get update -y
             }
