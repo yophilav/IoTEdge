@@ -102,9 +102,8 @@ stages:
               # Use the 'apt' to get the latest version string from the linux repository
               # $1 - package name
               # $2 - the Nth latest package (ex. 1 is the latest, 2 is the second latest), Optional
-              # BEARWASHERE
-              apt-cache madison $1 
-              apt-cache madison $1 | awk -F '|' '{gsub(/ /,"",$2); print $2}' | sort --version-sort -r | sed -n ${2:-1}p
+              
+              apt-cache madison $1 | awk -F '|' '{gsub(/ /,"",$2); print $2}' | sort --version-sort -r -u | sed -n ${2:-1}p
             }
 
             check-matching-version()
