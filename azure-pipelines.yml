@@ -239,7 +239,7 @@ stages:
               sudo apt update -y
               # BEARWASHERE -- I don't think this is necessary?
               # sudo apt -y dist-upgrade
-              sudo apt-get install -f
+              sudo DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" dist-upgrade
             }
 
             setup-config-apt()
