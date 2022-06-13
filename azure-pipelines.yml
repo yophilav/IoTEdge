@@ -196,7 +196,7 @@ stages:
               sudo apt-get update
             }
 
-            test-without-artifact()
+            test-released-metadata()
             {
               pkgName=$1
               edgeletVersion=$2
@@ -207,14 +207,14 @@ stages:
               check-matching-version "$latestVersionApt" "$edgeletVersion" "$pkgName"
             }
 
-            test-with-artifact()
+            test-released-artifact()
             {
               # Trying my best to make sure the script can easily be updated to run locally
               pkgName=$1
-              edgeletVersion=$2
+              artifactVersion=$2
 
               artifactPath="$(System.ArtifactsDirectory)"
-              gitHubArtifactSuffix="$edgeletVersion-1_$(os)_$(arch)_github.$(ext)"
+              gitHubArtifactSuffix="$artifactVersion-1_$(os)_$(arch)_github.$(ext)"
               sizePercentThrehold=$(edgelet.maxPercentAllowed)
               isCheckPreviousPkg=$(IsCheckPreviousPkg)
 
@@ -250,14 +250,16 @@ stages:
                 echo ""
               elif [[ "$(os)" == *"18.04" ]]; then
                 setup-config-apt "https://packages.microsoft.com/config/ubuntu/18.04/multiarch/packages-microsoft-prod.deb"
-                echo "Aziot-edge"
-                test-without-artifact "aziot-edge" "$(edgeletVersion)"
-                test-with-artifact "aziot-edge" "$(edgeletVersion)"
 
                 echo $'\n\n================================================\n\n'
-                
-                test-without-artifact "aziot-identity-service" "$(iisVersion)"
-                test-with-artifact "aziot-identity-service" "$(iisVersion)"
+                echo "Aziot-edge"
+                test-released-metadata "aziot-edge" "$(edgeletVersion)"
+                test-released-artifact "aziot-edge" "$(edgeletVersion)"
+
+                echo $'\n\n================================================\n\n'
+                echo "Aziot-identity-service"
+                test-released-metadata "aziot-identity-service" "$(iisVersion)"
+                test-released-artifact "aziot-identity-service" "$(iisVersion)"
               else
                 echo "Unsupported OS: $(os)"
                 exit 1;
