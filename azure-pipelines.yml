@@ -225,10 +225,10 @@ stages:
 
             setup-focal-source-apt()
             {
-              sudo sed -i 's/bionic/focal/g' /etc/apt/sources.list && \
+              # sudo sed -i 's/bionic/focal/g' /etc/apt/sources.list && \
               sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list && \
               wget https://packages.microsoft.com/config/ubuntu/20.04/prod.list  -O /etc/apt/sources.list.d/microsoft-prod.list && \
-              sudo apt update
+              sudo apt update -y
               # BEARWASHERE -- I don't think this is necessary?
               # sudo apt -y dist-upgrade
             }
