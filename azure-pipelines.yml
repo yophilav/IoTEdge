@@ -49,7 +49,7 @@ stages:
         matrix:
           Debian11-arm32v7:
             os: debian11
-            arch: arm32v7
+            arch: armhf
             ext: deb
 
           Ubuntu1804-amd64:
@@ -58,7 +58,7 @@ stages:
             ext: deb
           Ubuntu1804-aarch64:
             os: ubuntu18.04
-            arch: aarch64
+            arch: arm64
             ext: deb
           
           Ubuntu2004-amd64:
@@ -67,7 +67,7 @@ stages:
             ext: deb
           Ubuntu2004-aarch64:
             os: ubuntu20.04
-            arch: aarch64
+            arch: arm64
             ext: deb
 
       steps: 
@@ -82,9 +82,8 @@ stages:
             wget https://github.com/Azure/azure-iotedge/releases/download/$(edgeletVersion)/aziot-identity-service_$(iisVersion)-1_$(os)_$(arch).$(ext) -O $(System.ArtifactsDirectory)/aziot-identity-service_$(iisVersion)-1_$(os)_$(arch)_github.$(ext)
 
       - task: Bash@3
-        displayName: Artifacts Smoke Tests
+        displayName: Released Artifacts Smoke Tests
         condition: true
-        # BEARWASHERE -- TODO
         inputs:
           targetType: 'inline'
           script: |
