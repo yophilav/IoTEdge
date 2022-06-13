@@ -223,6 +223,15 @@ stages:
               done
             }
 
+            setup-focal-source-apt()
+            {
+              sudo sed -i 's/bionic/focal/g' /etc/apt/sources.list && \
+              sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list && \
+              wget https://packages.microsoft.com/config/ubuntu/20.04/prod.list  -O /etc/apt/sources.list.d/microsoft-prod.list && \
+              sudo apt update 
+              # sudo apt -y dist-upgrade
+            }
+
             setup-config-apt()
             {
               # Download the `apt` config file from the provided uri ($1), install it, and update the apt
@@ -295,6 +304,7 @@ stages:
             if [[ "$(os)" == "ubuntu"* ]]; then
             # Ubuntu
               if [[ "$(os)" == *"20.04" ]]; then
+                setup-focal-source-apt
                 setup-config-apt "https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb"
               elif [[ "$(os)" == *"18.04" ]]; then
                 setup-config-apt "https://packages.microsoft.com/config/ubuntu/18.04/multiarch/packages-microsoft-prod.deb"
