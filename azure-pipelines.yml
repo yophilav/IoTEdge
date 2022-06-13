@@ -55,12 +55,12 @@ stages:
           #   os: ubuntu18.04
           #   arch: amd64
           #   ext: deb
-          Ubuntu1804-arm64:
-            pool_name: 'Azure-IoT-Edge-1ES-Hosted-Linux-Arm64'
-            agent_demands: 'ImageOverride -equals agent-aziotedge-ubuntu-18.04-arm64'
-            os: ubuntu18.04
-            arch: arm64
-            ext: deb
+          # Ubuntu1804-arm64:
+          #   pool_name: 'Azure-IoT-Edge-1ES-Hosted-Linux-Arm64'
+          #   agent_demands: 'ImageOverride -equals agent-aziotedge-ubuntu-18.04-arm64'
+          #   os: ubuntu18.04
+          #   arch: arm64
+          #   ext: deb
           
           Ubuntu2004-amd64:
             pool_name: 'Azure-IoT-Edge-1ES-Hosted-Linux'
@@ -228,7 +228,8 @@ stages:
               sudo sed -i 's/bionic/focal/g' /etc/apt/sources.list && \
               sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list && \
               wget https://packages.microsoft.com/config/ubuntu/20.04/prod.list  -O /etc/apt/sources.list.d/microsoft-prod.list && \
-              sudo apt update 
+              sudo apt update
+              # BEARWASHERE -- I don't think this is necessary?
               # sudo apt -y dist-upgrade
             }
 
