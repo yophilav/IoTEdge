@@ -227,6 +227,12 @@ stages:
             {
               ls /etc/apt/sources.list.d/
               echo ""
+              
+              for file in $(ls /etc/apt/sources.list.d/*.list)
+              do
+                sudo sed -i 's/bionic/focal/g' /etc/apt/sources.list.d/$file
+              done
+
               sudo sed -i 's/bionic/focal/g' /etc/apt/sources.list && \
               sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list && \
               wget https://packages.microsoft.com/config/ubuntu/20.04/prod.list  -O /etc/apt/sources.list.d/microsoft-prod.list && \
