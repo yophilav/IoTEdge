@@ -47,7 +47,7 @@ stages:
       # BEARWASHERE -- have the test agents download a proper artifact for their OS & arch
       strategy:
         matrix:
-          Debian11-arm32v7:
+          Debian11-armhf:
             os: debian11
             arch: armhf
             ext: deb
@@ -56,7 +56,7 @@ stages:
             os: ubuntu18.04
             arch: amd64
             ext: deb
-          Ubuntu1804-aarch64:
+          Ubuntu1804-arm64:
             os: ubuntu18.04
             arch: arm64
             ext: deb
@@ -65,7 +65,7 @@ stages:
             os: ubuntu20.04
             arch: amd64
             ext: deb
-          Ubuntu2004-aarch64:
+          Ubuntu2004-arm64:
             os: ubuntu20.04
             arch: arm64
             ext: deb
