@@ -236,9 +236,7 @@ stages:
               sudo sed -i 's/bionic/focal/g' /etc/apt/sources.list && \
               sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list && \
               wget https://packages.microsoft.com/config/ubuntu/20.04/prod.list  -O /etc/apt/sources.list.d/microsoft-prod.list && \
-              sudo apt update -y
-              # BEARWASHERE -- I don't think this is necessary?
-              # sudo apt -y dist-upgrade
+              sudo apt update -y && \
               sudo DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" dist-upgrade
             }
 
@@ -261,7 +259,7 @@ stages:
               echo "Setup source artifact repository:"
               echo "$1"
               wget "$1" -O packages-microsoft-prod.deb &&
-              sudo DEBIAN_FRONTEND=noninteractive dpkg -i packages-microsoft-prod.deb &&
+              sudo dpkg --force-confnew -i packages-microsoft-prod.deb &&
               rm packages-microsoft-prod.deb &&
               sudo apt-get update -y
             }
