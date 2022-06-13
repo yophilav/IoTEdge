@@ -47,11 +47,28 @@ stages:
       # BEARWASHERE -- have the test agents download a proper artifact for their OS & arch
       strategy:
         matrix:
+          Debian11-arm32v7:
+            os: debian11
+            arch: arm32v7
+            ext: deb
+
           Ubuntu1804-amd64:
             os: ubuntu18.04
             arch: amd64
             ext: deb
-            target.iotedged: edgelet/target/release
+          Ubuntu1804-aarch64:
+            os: ubuntu18.04
+            arch: aarch64
+            ext: deb
+          
+          Ubuntu2004-amd64:
+            os: ubuntu20.04
+            arch: amd64
+            ext: deb
+          Ubuntu2004-aarch64:
+            os: ubuntu20.04
+            arch: aarch64
+            ext: deb
 
       steps: 
       - task: Bash@3
@@ -244,11 +261,20 @@ stages:
             if [[ "$(os)" == "ubuntu"* ]]; then
             # Ubuntu
               if [[ "$(os)" == *"20.04" ]]; then
-                echo "Setup source artifact repository"
                 setup-config-apt "https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb"
 
-                echo ""
+                echo $'\n\n================================================\n\n'
+                echo "Aziot-edge"
+                test-released-metadata "aziot-edge" "$(edgeletVersion)"
+                test-released-artifact "aziot-edge" "$(edgeletVersion)"
+
+                echo $'\n\n================================================\n\n'
+                echo "Aziot-identity-service"
+                test-released-metadata "aziot-identity-service" "$(iisVersion)"
+                test-released-artifact "aziot-identity-service" "$(iisVersion)"
+
               elif [[ "$(os)" == *"18.04" ]]; then
+
                 setup-config-apt "https://packages.microsoft.com/config/ubuntu/18.04/multiarch/packages-microsoft-prod.deb"
 
                 echo $'\n\n================================================\n\n'
@@ -265,11 +291,21 @@ stages:
                 exit 1;
               fi
             elif [[ "$(os)" == "debian11" ]]; then
-            # Debian
+              # Debian
               echo "Setup source artifact repository"
               curl https://packages.microsoft.com/config/debian/11/packages-microsoft-prod.deb > ./packages-microsoft-prod.deb
               sudo apt install ./packages-microsoft-prod.deb
               sudo apt-get update
+
+              echo $'\n\n================================================\n\n'
+              echo "Aziot-edge"
+              test-released-metadata "aziot-edge" "$(edgeletVersion)"
+              test-released-artifact "aziot-edge" "$(edgeletVersion)"
+
+              echo $'\n\n================================================\n\n'
+              echo "Aziot-identity-service"
+              test-released-metadata "aziot-identity-service" "$(iisVersion)"
+              test-released-artifact "aziot-identity-service" "$(iisVersion)"
             else
               echo "Unsupported OS: $(os)"
               exit 1;
