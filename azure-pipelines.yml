@@ -151,12 +151,26 @@ stages:
             echo $'\n\n================================================\n\n'
             echo "Aziot-edge"
             test-released-metadata "aziot-edge" "$(edgeletVersion)"
-            test-released-artifact "aziot-edge" "$(edgeletVersion)"
+            
+            test-released-artifact \
+              "aziot-edge" \
+              "$(edgeletVersion)" \
+              "$(System.ArtifactsDirectory)" \
+              "$artifactVersion-1_$(os)_$(arch)_github.$(ext)" \
+              "$(edgelet.maxPercentAllowed)" \
+              "$(IsCheckPreviousPkg)"
 
             echo $'\n\n================================================\n\n'
             echo "Aziot-identity-service"
             test-released-metadata "aziot-identity-service" "$(iisVersion)"
-            test-released-artifact "aziot-identity-service" "$(iisVersion)"
+
+            test-released-artifact \
+              "aziot-identity-service" \
+              "$(iisVersion)" \
+              "$(System.ArtifactsDirectory)" \
+              "$artifactVersion-1_$(os)_$(arch)_github.$(ext)" \
+              "$(edgelet.maxPercentAllowed)" \
+              "$(IsCheckPreviousPkg)"
 
     #     - template: ../e2e/templates/e2e-setup.yaml
     #     - template: ../e2e/templates/e2e-run.yaml  

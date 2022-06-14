@@ -192,11 +192,10 @@ test-released-artifact()
   # Trying my best to make sure the script can easily be updated to run locally
   pkgName=$1
   artifactVersion=$2
-
-  artifactPath="$(System.ArtifactsDirectory)"
-  gitHubArtifactSuffix="$artifactVersion-1_$(os)_$(arch)_github.$(ext)"
-  sizePercentThrehold=$(edgelet.maxPercentAllowed)
-  isCheckPreviousPkg=$(IsCheckPreviousPkg)
+  artifactPath=$3
+  gitHubArtifactSuffix=$4
+  sizePercentThrehold=$5
+  isCheckPreviousPkg=$6
 
   echo "Download PMC artifacts ($pkgName)"
   wgetRespCurrent=$(download-artifact-from-pmc-apt "$pkgName" "$artifactPath")
