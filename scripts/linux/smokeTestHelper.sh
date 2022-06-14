@@ -207,7 +207,6 @@ test-released-artifact()
 
   if $isCheckPreviousPkg; then
     # Download the previous release artifact for comparison
-    echo "BEARWASHERE: PrevVersion = $(get-latest-version-apt "$pkgName" 2)"
     wgetRespPrev=$(download-artifact-from-pmc-apt "$pkgName=$(get-latest-version-apt "$pkgName" 2)" "$artifactPath")
     echo $wgetRespPrev
     previousArtifact=${wgetRespPrev##* }

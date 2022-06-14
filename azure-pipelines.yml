@@ -151,12 +151,12 @@ stages:
             echo $'\n\n================================================\n\n'
             echo "Aziot-edge"
             test-released-metadata "aziot-edge" "$(edgeletVersion)"
-            
+
             test-released-artifact \
               "aziot-edge" \
               "$(edgeletVersion)" \
               "$(System.ArtifactsDirectory)" \
-              "$artifactVersion-1_$(os)_$(arch)_github.$(ext)" \
+              "$(edgeletVersion)-1_$(os)_$(arch)_github.$(ext)" \
               "$(edgelet.maxPercentAllowed)" \
               "$(IsCheckPreviousPkg)"
 
@@ -168,7 +168,7 @@ stages:
               "aziot-identity-service" \
               "$(iisVersion)" \
               "$(System.ArtifactsDirectory)" \
-              "$artifactVersion-1_$(os)_$(arch)_github.$(ext)" \
+              "$(iisVersion)-1_$(os)_$(arch)_github.$(ext)" \
               "$(edgelet.maxPercentAllowed)" \
               "$(IsCheckPreviousPkg)"
 
