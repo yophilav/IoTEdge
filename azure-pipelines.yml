@@ -122,25 +122,25 @@ stages:
 
             echo $'\n\n================================================\n\n'
             echo "Aziot-edge"
-            test-released-metadata "aziot-edge" "$(edgeletVersion)"
+            test-released-metadata "aziot-edge" "$(GitHubParameters.edgeletVersion)"
 
             test-released-artifact \
               "aziot-edge" \
-              "$(edgeletVersion)" \
+              "$(GitHubParameters.edgeletVersion)" \
               "$(System.ArtifactsDirectory)" \
-              "$(edgeletVersion)-1_$(os)_$(arch)_github.$(ext)" \
+              "$(GitHubParameters.edgeletVersion)-1_$(os)_$(arch)_github.$(ext)" \
               "$(edgelet.maxPercentAllowed)" \
               "$(IsCheckPreviousPkg)"
 
             echo $'\n\n================================================\n\n'
             echo "Aziot-identity-service"
-            test-released-metadata "aziot-identity-service" "$(iisVersion)"
+            test-released-metadata "aziot-identity-service" "$(GitHubParameters.iisVersion)"
 
             test-released-artifact \
               "aziot-identity-service" \
-              "$(iisVersion)" \
+              "$(GitHubParameters.iisVersion)" \
               "$(System.ArtifactsDirectory)" \
-              "$(iisVersion)-1_$(os)_$(arch)_github.$(ext)" \
+              "$(GitHubParameters.iisVersion)-1_$(os)_$(arch)_github.$(ext)" \
               "$(edgelet.maxPercentAllowed)" \
               "$(IsCheckPreviousPkg)"
 
