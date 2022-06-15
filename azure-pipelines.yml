@@ -1,6 +1,14 @@
 trigger: none
 pr: none
 
+resources:
+  repositories:
+  - repository: azure-iotedge
+    type: github
+    endpoint: azure-iot-edge-iotedge1-github
+    name: azure/azure-iotedge
+    ref: main
+
 stages:
   - stage: RunSmokeTest
     displayName: Smoke Test
@@ -47,15 +55,36 @@ stages:
         - $(agent_demands)
 
       steps:
+      - checkout: azure-iotedge
+        submodules: recursive
+      - checkout: self
       - task: Bash@3
-        displayName: Download Edgelet GitHub
+        displayName: Get Parameters From GitHub
         condition: true
+        name: GitHubParameters
         # BEARWASHERE -- "edgeletVersion" needs to be a pipeline variable
         inputs:
           targetType: 'inline'
           script: |
-            wget https://github.com/Azure/azure-iotedge/releases/download/$(edgeletVersion)/aziot-edge_$(edgeletVersion)-1_$(os)_$(arch).$(ext) -O $(System.ArtifactsDirectory)/aziot-edge_$(edgeletVersion)-1_$(os)_$(arch)_github.$(ext)
-            wget https://github.com/Azure/azure-iotedge/releases/download/$(edgeletVersion)/aziot-identity-service_$(iisVersion)-1_$(os)_$(arch).$(ext) -O $(System.ArtifactsDirectory)/aziot-identity-service_$(iisVersion)-1_$(os)_$(arch)_github.$(ext)
+            # Source the scripts and get versions
+            edgeletVersion=$(cat $(Build.SourcesDirectory)/azure-iotedge/latest-aziot-edge.json | jq ".\"aziot-edge\"" | tr -d '"')
+            iisVersion=$(cat cat $(Build.SourcesDirectory)/azure-iotedge/latest-aziot-identity-service.json | jq ".\"aziot-identity-service\"" | tr -d '"')
+
+            echo "##vso[task.setvariable variable=edgeletVersion;isOutput=true]$edgeletVersion"
+            echo "##vso[task.setvariable variable=iisVersion;isOutput=true]$iisVersion"
+        env:
+          GITHUB_PAT: "$(GitHubAccessToken)"
+      - task: Bash@3
+        displayName: Download Edgelet GitHub
+        condition: true
+        inputs:
+          targetType: 'inline'
+          script: |
+            edgeletVersion="variables['GitHubParameters.edgeletVersion']"
+            iisVersion="variables['GitHubParameters.iisVersion']"
+
+            wget https://github.com/Azure/azure-iotedge/releases/download/$edgeletVersion/aziot-edge_$edgeletVersion-1_$(os)_$(arch).$(ext) -O $(System.ArtifactsDirectory)/aziot-edge_$edgeletVersion-1_$(os)_$(arch)_github.$(ext)
+            wget https://github.com/Azure/azure-iotedge/releases/download/$edgeletVersion/aziot-identity-service_$iisVersion-1_$(os)_$(arch).$(ext) -O $(System.ArtifactsDirectory)/aziot-identity-service_$iisVersion-1_$(os)_$(arch)_github.$(ext)
 
       - task: Bash@3
         displayName: Released Artifacts Smoke Tests
@@ -65,8 +94,8 @@ stages:
           script: |
             ####### Helper functions
             # Source the scripts & Update version files
-            sudo chmod +x $(Build.SourcesDirectory)/scripts/linux/smokeTestHelper.sh
-            source $(Build.SourcesDirectory)/scripts/linux/smokeTestHelper.sh
+            sudo chmod +x $(Build.SourcesDirectory)/iotedge/scripts/linux/smokeTestHelper.sh
+            source $(Build.SourcesDirectory)/iotedge/scripts/linux/smokeTestHelper.sh
 
             ####### Main
             if [[ "$(os)" == "ubuntu"* ]]; then
