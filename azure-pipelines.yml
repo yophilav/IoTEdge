@@ -59,6 +59,24 @@ stages:
         submodules: recursive
       - checkout: self
       - task: Bash@3
+        displayName: Setup Test Agent
+        condition: true
+        name: SetupTestAgent
+        # BEARWASHERE -- "edgeletVersion" needs to be a pipeline variable
+        inputs:
+          targetType: 'inline'
+          script: |
+            # Source the scripts & Update version files
+            sudo chmod +x $(Build.SourcesDirectory)/iotedge/scripts/linux/smokeTestHelper.sh
+            source $(Build.SourcesDirectory)/iotedge/scripts/linux/smokeTestHelper.sh
+
+            wait-for-dpkg-lock
+
+            if [[ "$(arch)" == "arm"* ]]; then
+              sudo apt-get install jq -y
+            fi
+
+      - task: Bash@3
         displayName: Get Parameters From Azure-iotedge
         condition: true
         name: GitHubParameters
@@ -66,10 +84,6 @@ stages:
         inputs:
           targetType: 'inline'
           script: |
-            if [[ "$(arch)" == "arm"* ]]; then
-              sudo apt-get install jq -y
-            fi
-
             # Source the scripts and get versions
             edgeletVersion=$(cat $(Build.SourcesDirectory)/azure-iotedge/latest-aziot-edge.json | jq ".\"aziot-edge\"" | tr -d '"')
             iisVersion=$(cat cat $(Build.SourcesDirectory)/azure-iotedge/latest-aziot-identity-service.json | jq ".\"aziot-identity-service\"" | tr -d '"')
@@ -96,12 +110,6 @@ stages:
         inputs:
           targetType: 'inline'
           script: |
-            ####### Helper functions
-            # Source the scripts & Update version files
-            sudo chmod +x $(Build.SourcesDirectory)/iotedge/scripts/linux/smokeTestHelper.sh
-            source $(Build.SourcesDirectory)/iotedge/scripts/linux/smokeTestHelper.sh
-
-            ####### Main
             if [[ "$(os)" == "ubuntu"* ]]; then
             # Ubuntu
               if [[ "$(os)" == *"20.04" ]]; then
