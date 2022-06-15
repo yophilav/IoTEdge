@@ -70,7 +70,7 @@ stages:
             sudo chmod +x $(Build.SourcesDirectory)/iotedge/scripts/linux/smokeTestHelper.sh
             source $(Build.SourcesDirectory)/iotedge/scripts/linux/smokeTestHelper.sh
 
-            wait-for-dpkg-lock
+            wait-for-dpkg-lock 120
 
             if [[ "$(arch)" == "arm"* ]]; then
               sudo apt-get install jq -y
