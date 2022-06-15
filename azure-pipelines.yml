@@ -15,7 +15,6 @@ stages:
     jobs:
     - job: linux
       displayName: Linux
-      dependsOn: safe_guard
       strategy:
         matrix:
           Centos75-amd64:
