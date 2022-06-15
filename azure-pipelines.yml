@@ -1,6 +1,14 @@
 trigger: none
 pr: none
 
+schedules:
+- cron: "0 */1 * * *"
+  displayName: Hourly Canary Main
+  branches:
+    include:
+    - main
+  always: true
+
 resources:
   repositories:
   - repository: azure-iotedge
@@ -17,12 +25,12 @@ stages:
       displayName: Release Artifact Smoke Tests
       strategy:
         matrix:
-          Debian11-armhf:
-            pool_name: 'Azure-IoT-Edge-Core'
-            agent_demands: 'deb11-e2e-tests -equals true'
-            os: debian11
-            arch: armhf
-            ext: deb
+          # Debian11-armhf:
+          #   pool_name: 'Azure-IoT-Edge-Core'
+          #   agent_demands: 'deb11-e2e-tests -equals true'
+          #   os: debian11
+          #   arch: armhf
+          #   ext: deb
 
           Ubuntu1804-amd64:
             pool_name: 'Azure-IoT-Edge-1ES-Hosted-Linux'
@@ -80,7 +88,6 @@ stages:
         displayName: Get Parameters From Azure-iotedge
         condition: true
         name: GitHubParameters
-        # BEARWASHERE -- "edgeletVersion" needs to be a pipeline variable
         inputs:
           targetType: 'inline'
           script: |
@@ -159,6 +166,3 @@ stages:
               "$(GitHubParameters.iisVersion)-1_$(os)_$(arch)_github.$(ext)" \
               "$(edgelet.maxPercentAllowed)" \
               "$(IsCheckPreviousPkg)"
-
-    #     - template: ../e2e/templates/e2e-setup.yaml
-    #     - template: ../e2e/templates/e2e-run.yaml  
