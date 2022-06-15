@@ -1,14 +1,6 @@
 trigger: none
 pr: none
 
-schedules:
-- cron: "0 */1 * * *"
-  displayName: Hourly Canary Main
-  branches:
-    include:
-    - main
-  always: true
-
 resources:
   repositories:
   - repository: azure-iotedge
@@ -21,6 +13,50 @@ stages:
   - stage: RunSmokeTest
     displayName: Smoke Test
     jobs:
+    - job: linux
+      displayName: Linux
+      dependsOn: safe_guard
+      strategy:
+        matrix:
+          Centos75-amd64:
+            os: centos7
+            artifactName: iotedged-centos7-amd64
+            identityServiceArtifactName: packages_centos-7_amd64
+            identityServicePackageFilter: aziot-identity-service-*.x86_64.rpm
+          RedHat8-amd64:
+            os: redhat8
+            artifactName: iotedged-redhat8-amd64
+            identityServiceArtifactName: packages_redhat-ubi8-latest_amd64
+            identityServicePackageFilter: aziot-identity-service-*.x86_64.rpm
+      steps:
+        - task: AzureKeyVault@1
+          displayName: Get secrets
+          inputs:
+            azureSubscription: 'azureiotedge-arm'
+            keyVaultName: 'edgebuildkv'
+            secretsFilter: >-
+              GitHubAccessToken
+        - checkout: self
+        - task: DownloadPipelineArtifact@2
+          displayName: Download Pipeline Build Packages
+          inputs:
+            source: 'current'
+            path: $(System.ArtifactsDirectory)
+            patterns: |
+                $(artifactName)/*.deb
+                $(artifactName)/*.rpm
+        - task: PowerShell@2
+          displayName: 'Download aziot-identity-service'
+          inputs:
+            filePath: $(Build.SourcesDirectory)/scripts/local/test/DownloadIdentityService.ps1
+            workingDirectory: $(Build.SourcesDirectory)
+          env:
+            GITHUB_TOKEN: $(GitHubAccessToken)
+            ARTIFACT_NAME: $(identityServiceArtifactName)
+            PACKAGE_FILTER: $(identityServicePackageFilter)
+            DOWNLOAD_PATH: $(System.ArtifactsDirectory)/$(artifactName)
+            IDENTITY_SERVICE_COMMIT: $(aziotis.commit)
+
     - job: downloadArtifacts
       displayName: Release Artifact Smoke Tests
       strategy:
