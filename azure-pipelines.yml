@@ -59,13 +59,17 @@ stages:
         submodules: recursive
       - checkout: self
       - task: Bash@3
-        displayName: Get Parameters From GitHub
+        displayName: Get Parameters From Azure-iotedge
         condition: true
         name: GitHubParameters
         # BEARWASHERE -- "edgeletVersion" needs to be a pipeline variable
         inputs:
           targetType: 'inline'
           script: |
+            if [[ "$(arch)" == "arm"* ]]; then
+              sudo apt-get install jq -y
+            fi
+
             # Source the scripts and get versions
             edgeletVersion=$(cat $(Build.SourcesDirectory)/azure-iotedge/latest-aziot-edge.json | jq ".\"aziot-edge\"" | tr -d '"')
             iisVersion=$(cat cat $(Build.SourcesDirectory)/azure-iotedge/latest-aziot-identity-service.json | jq ".\"aziot-identity-service\"" | tr -d '"')
