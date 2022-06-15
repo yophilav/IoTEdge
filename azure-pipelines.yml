@@ -80,8 +80,8 @@ stages:
         inputs:
           targetType: 'inline'
           script: |
-            edgeletVersion="variables['GitHubParameters.edgeletVersion']"
-            iisVersion="variables['GitHubParameters.iisVersion']"
+            edgeletVersion=variables['GitHubParameters.edgeletVersion']
+            iisVersion=variables['GitHubParameters.iisVersion']
 
             wget https://github.com/Azure/azure-iotedge/releases/download/$edgeletVersion/aziot-edge_$edgeletVersion-1_$(os)_$(arch).$(ext) -O $(System.ArtifactsDirectory)/aziot-edge_$edgeletVersion-1_$(os)_$(arch)_github.$(ext)
             wget https://github.com/Azure/azure-iotedge/releases/download/$edgeletVersion/aziot-identity-service_$iisVersion-1_$(os)_$(arch).$(ext) -O $(System.ArtifactsDirectory)/aziot-identity-service_$iisVersion-1_$(os)_$(arch)_github.$(ext)
