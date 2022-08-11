@@ -118,8 +118,9 @@ stages:
 
             wait-for-dpkg-lock 120
 
-            if [[ "$(arch)" == "arm"* ]]; then
-              sudo apt-get install jq -y
+            if ! command -v jq &> /dev/null
+            then
+                sudo apt-get install jq -y
             fi
 
       - task: Bash@3
