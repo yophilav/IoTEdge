@@ -9,6 +9,23 @@ get-latest-version-apt()
   apt-cache madison $1 | awk -F '|' '{gsub(/ /,"",$2); print $2}' | sort --version-sort -r -u | sed -n ${2:-1}p
 }
 
+get-latest-image-publication-run()
+{
+   #Look through "Azure-IoT-Edge-Core Images Publish" pipeline for the latest image publication run given the github branch
+   # $1 - branch
+   # Note PipelineID = 223957 is  "Azure-IoT-Edge-Core Images Publish"
+   pipelineRuns=$(curl -s -u :$PAT --request GET "https://dev.azure.com/msazure/One/_apis/pipelines/223957/runs?api-version=6.0")
+   buildIds=($(echo $pipelineRuns | jq '."value"[] | select(.result == "succeeded").id'))
+   for buildId in "${buildIds[@]}"
+   do
+     result=$(curl -s -u :$PAT --request GET "https://dev.azure.com/msazure/One/_apis/build/builds/$buildId?api-version=6.0" | jq "select(.sourceBranch == \"refs/heads/$1\")")
+     [ -z "$result" ] || { echo $buildId; return 0; }
+   done
+
+   echo "Cannot find an associate build for branch ($1) from buildIds: ${buildIds[@]}"
+   #exit -1;
+}
+
 check-matching-version()
 {
   # Compare if ($2) is a substring of ($1)
