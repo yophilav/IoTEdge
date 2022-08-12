@@ -11,19 +11,51 @@ get-latest-version-apt()
 
 get-latest-image-publication-run()
 {
-   #Look through "Azure-IoT-Edge-Core Images Publish" pipeline for the latest image publication run given the github branch
-   # $1 - branch
-   # Note PipelineID = 223957 is  "Azure-IoT-Edge-Core Images Publish"
-   pipelineRuns=$(curl -s -u :$PAT --request GET "https://dev.azure.com/msazure/One/_apis/pipelines/223957/runs?api-version=6.0")
-   buildIds=($(echo $pipelineRuns | jq '."value"[] | select(.result == "succeeded").id'))
-   for buildId in "${buildIds[@]}"
-   do
-     result=$(curl -s -u :$PAT --request GET "https://dev.azure.com/msazure/One/_apis/build/builds/$buildId?api-version=6.0" | jq "select(.sourceBranch == \"refs/heads/$1\")")
-     [ -z "$result" ] || { echo $buildId; return 0; }
-   done
+  # Look through "Azure-IoT-Edge-Core Images Publish" pipeline for the latest successful image publication run given the github branch
+  # $1 - branch
+  # Note PipelineID = 223957 is  "Azure-IoT-Edge-Core Images Publish"
+  [[ -z "$PAT" ]] && { echo "\$PAT variable is quired to access Azure DevOps"; exit 1; }
 
-   echo "Cannot find an associate build for branch ($1) from buildIds: ${buildIds[@]}"
-   #exit -1;
+  pipelineRuns=$(curl -s -u :$PAT --request GET "https://dev.azure.com/msazure/One/_apis/pipelines/223957/runs?api-version=6.0")
+  buildIds=($(echo $pipelineRuns | jq '."value"[] | select(.result == "succeeded").id'))
+  for buildId in "${buildIds[@]}"
+  do
+    result=$(curl -s -u :$PAT --request GET "https://dev.azure.com/msazure/One/_apis/build/builds/$buildId?api-version=6.0" | jq "select(.sourceBranch == \"refs/heads/$1\")")
+    [[ -z "$result" ]] || { echo $buildId; return 0; }
+  done
+
+  echo "Cannot find an associate build for branch ($1) from buildIds: ${buildIds[@]}"
+  exit -1;
+}
+
+get-build-logs-from-task()
+{
+  # Get pipeline build logs for a given Task name for a given buildId
+  # $1 - buildId
+  # $2 - task display name
+  [[ -z "$PAT" ]] && { echo "\$PAT variable is quired to access Azure DevOps"; exit 1; }
+
+  buildId=$1
+  logId=$(curl -s -u :$PAT --request GET "https://dev.azure.com/msazure/One/_apis/build/builds/$buildId/timeline?api-version=6.0" | jq ".records[] | select(.name == \"$2\").log.id")
+  [[ -z "$logId" ]] && { echo "Failed to get log id for task ($2) with buildId ($1)"; exit 1; }
+  curl -s -u :$PAT --request GET "https://dev.azure.com/msazure/One/_apis/build/builds/$buildId/logs/$logId?api-version=6.0"
+}
+
+get-image-sha-from-devops-logs()
+{
+  # Parse DevOps build logs to get container and its sha
+  # example of output: 
+  # /public/azureiotedge-agent:1.1.15  sha256:e203b6f3f9a3edff8a98a19894a9b1ca295bfd80e5412fdff5a7bc037bd04dcf
+  # /public/azureiotedge-agent:1.1.15-linux-amd64  sha256:3a8ef9d5f1ccf57dc6ebdc413e1312cec805ee340470b7c0808e715683eed5c9
+  # /public/azureiotedge-agent:1.1.15-linux-arm64v8  sha256:c75323754fc45d74f7ec3458876bfbc046e4e73fb800cc301a7bc6698d1856e4
+  # /public/azureiotedge-agent:1.1.15-linux-arm32v7  sha256:1fe533ae64e73141154afcfe1b1244d765a61cc2cdfd5c0a8fa9303fe60a5951
+  # /public/azureiotedge-agent:1.1.15-windows-amd64  sha256:a192aa2b9e203493ff69bb8dd5b0c7807664ff30f129bde4feb1988cac178929
+  #
+  # $1 - logs
+  moduleName=$(echo "$logs" | grep " image: " | head -1 | awk '{print substr($3, 4, length($3)-4)}')
+  moduleSha=$(echo "$logs" | grep "Digest: " | awk '{print $3}')
+  echo "$moduleName  $moduleSha" 
+  echo "$logs" | grep " is digest sha256:" | awk '{print substr($5, 6, length($5)-7)"  "substr($8, 1, length($8)-1)}'
 }
 
 check-matching-version()
