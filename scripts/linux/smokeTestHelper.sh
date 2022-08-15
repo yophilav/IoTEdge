@@ -50,7 +50,7 @@ get-image-sha-from-devops-logs()
   # /public/azureiotedge-agent:1.1.15-linux-arm64v8  sha256:c75323754fc45d74f7ec3458876bfbc046e4e73fb800cc301a7bc6698d1856e4
   # /public/azureiotedge-agent:1.1.15-linux-arm32v7  sha256:1fe533ae64e73141154afcfe1b1244d765a61cc2cdfd5c0a8fa9303fe60a5951
   # /public/azureiotedge-agent:1.1.15-windows-amd64  sha256:a192aa2b9e203493ff69bb8dd5b0c7807664ff30f129bde4feb1988cac178929
-  #
+
   # $1 - logs
   moduleName=$(echo "$logs" | grep " image: " | head -1 | awk '{print substr($3, 4, length($3)-4)}')
   moduleSha=$(echo "$logs" | grep "Digest: " | awk '{print $3}')
@@ -157,6 +157,12 @@ download-artifact-from-pmc-apt()
   cmd="wget -q $uri -O $targetArtifactPath"
   echo "Running: $cmd"
   $cmd
+}
+
+download-docker-images-mcr()
+{
+  # Download docker images from the given list $1 against mcr
+  
 }
 
 wait-for-dpkg-lock()
