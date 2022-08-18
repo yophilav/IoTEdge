@@ -17,7 +17,9 @@ get-latest-image-publication-run()
   [[ -z "$PAT" ]] && { echo "\$PAT variable is quired to access Azure DevOps"; exit 1; }
 
   pipelineRuns=$(curl -s -u :$PAT --request GET "https://dev.azure.com/msazure/One/_apis/pipelines/223957/runs?api-version=6.0")
-  buildIds=($(echo $pipelineRuns | jq '."value"[] | select(.result == "succeeded").id'))
+  OLD_IFS=$IFS
+  IFS=' ' buildIds=( $(echo $pipelineRuns | jq '."value"[] | select(.result == "succeeded").id' | tr '\n' ' ') )
+  IFS=$OLD_IFS
   for buildId in "${buildIds[@]}"
   do
     result=$(curl -s -u :$PAT --request GET "https://dev.azure.com/msazure/One/_apis/build/builds/$buildId?api-version=6.0" | jq "select(.sourceBranch == \"refs/heads/$1\")")
