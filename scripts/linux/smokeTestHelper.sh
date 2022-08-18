@@ -164,7 +164,37 @@ download-artifact-from-pmc-apt()
 download-docker-images-mcr()
 {
   # Download docker images from the given list $1 against mcr
+  #
+  # $1 - "$imageHashMap"
   
+  OLD_IFS=$IFS; IFS=' ' pmcImages=($(prepare-docker-image-names "$imageHashMap" | tr '\n' ' ')); IFS=$OLD_IFS
+  for image in "${pmcImages[@]}"
+  do
+    docker pull $image
+  done
+
+  #TODO: Get Hash and pull hash off of the imageHashMap.
+}
+
+prepare-docker-image-names()
+{
+  # The function does the following: 
+  # 1. Parse the result from get-image-sha-from-devops-logs()'s image hashmap to get list of image names
+  # 2. Set the docker images namespace to be "mcr.microsoft.com"
+  # 3. Return list of docker to be pulled from MCR
+  #
+  # $1 - String result from get-image-sha-from-devops-logs()
+  imageHashMap=$1
+
+  OLD_IFS=$IFS
+  IFS=' ' images=( $(echo "$imageHashMap" | awk '{print $1}' | tr '\n' ' ') )
+  IFS=$OLD_IFS
+
+  pmcImages=()
+  for image in "${images[@]}"
+  do
+    echo "mcr.microsoft.com/${image##*/}"
+  done
 }
 
 wait-for-dpkg-lock()
