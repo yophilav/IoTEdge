@@ -141,6 +141,30 @@ check-github-pmc-artifacts-similarity()
   fi
 }
 
+check-images-sha()
+{
+  # Check if the images pulled using docker image name from MCR resolves the to the same image SHA 
+  # which "Azure-IoT-Edge-Core Images Publish" pipeline claimed to publish to the MCR. 
+  #
+  # $1 - branch name
+  # $2 - task display name (use to reference the image module)
+  
+  branchName=$1
+  pipelineDisplayName=$2
+
+  buildId=$(get-latest-image-publication-run "$branchName")
+  logs=$(get-build-logs-from-task $buildId "$pipelineDisplayName")
+  imageHashMap=$(get-image-sha-from-devops-logs "$logs")
+
+  OLD_IFS=$IFS; 
+  IFS=' '
+  nameList=($(echo "$imageHashMap" | awk '{sub(/.*azureiotedge/, "azureiotedge", $1); print $1}' | tr '\n' ' '))
+  shaList=($(echo "$imageHashMap" | awk '{print $2}' | tr '\n' ' '))
+  IFS=$OLD_IFS
+
+  download-docker-images-mcr "$imageHashMap"
+}
+
 download-artifact-from-pmc-apt()
 {
   # Download artifact for a package named ($1) using uri acquired by `apt` to a location ($2).
@@ -166,14 +190,13 @@ download-docker-images-mcr()
   # Download docker images from the given list $1 against mcr
   #
   # $1 - "$imageHashMap"
-  
+  imageHashMap=$1
+
   OLD_IFS=$IFS; IFS=' ' pmcImages=($(prepare-docker-image-names "$imageHashMap" | tr '\n' ' ')); IFS=$OLD_IFS
   for image in "${pmcImages[@]}"
   do
     docker pull $image
   done
-
-  #TODO: Get Hash and pull hash off of the imageHashMap.
 }
 
 prepare-docker-image-names()
@@ -304,4 +327,10 @@ test-released-artifact()
   fi
 
   check-github-pmc-artifacts-similarity "$currentArtifact" "$artifactPath" "$pkgName"
+}
+
+test-released-images()
+{
+  # Amalgam of test cases to test docker images in mcr
+  check-images-sha;
 }
