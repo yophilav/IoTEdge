@@ -141,7 +141,7 @@ check-github-pmc-artifacts-similarity()
   fi
 }
 
-check-images-sha()
+check-images-pmc-availability()
 {
   # Check if the images pulled using docker image name from MCR resolves the to the same image SHA 
   # which "Azure-IoT-Edge-Core Images Publish" pipeline claimed to publish to the MCR. 
@@ -151,18 +151,44 @@ check-images-sha()
   
   branchName=$1
   pipelineDisplayName=$2
+  echo "Checking images published for $branchName ($pipelineDisplayName)"
 
   buildId=$(get-latest-image-publication-run "$branchName")
   logs=$(get-build-logs-from-task $buildId "$pipelineDisplayName")
   imageHashMap=$(get-image-sha-from-devops-logs "$logs")
+  echo "Checking the following images publication:"
+  echo "$imageHashMap"
+  echo ""
 
   OLD_IFS=$IFS; 
   IFS=' '
   nameList=($(echo "$imageHashMap" | awk '{sub(/.*azureiotedge/, "azureiotedge", $1); print $1}' | tr '\n' ' '))
   shaList=($(echo "$imageHashMap" | awk '{print $2}' | tr '\n' ' '))
-  IFS=$OLD_IFS
+  pmcImages=($(prepare-docker-image-names "$imageHashMap" | tr '\n' ' '))
+  
+  IFS=''
+  pullResults=()
+  for image in "${pmcImages[@]}"
+  do
+    pullResults+=($(docker pull $image))
+  done
 
-  download-docker-images-mcr "$imageHashMap"
+  IFS=$OLD_IFS
+  isFailed=false
+  for i in $(seq 0 $((${#nameList[@]} - 1 )) );
+  do
+    echo "${pullResults[$i]}" | grep -q "${nameList[$i]}" \
+      && { echo "[PASS] ${nameList[$i]} is available."; } \
+      || { echo "[FAIL] The image name:tag ( ${nameList[$i]} ) is missing."; isFailed=true; }
+    echo "${pullResults[$i]}" | grep -q "${shaList[$i]}" \
+      && { echo "[PASS] ${shaList[$i]} is available."; } \
+      || { echo "[FAIL] The sha256 ( ${shaList[$i]} ) is missing."; isFailed=true; }
+  done
+
+  if $isFailed
+  then 
+    exit 1;
+  fi
 }
 
 download-artifact-from-pmc-apt()
@@ -183,20 +209,6 @@ download-artifact-from-pmc-apt()
   cmd="wget -q $uri -O $targetArtifactPath"
   echo "Running: $cmd"
   $cmd
-}
-
-download-docker-images-mcr()
-{
-  # Download docker images from the given list $1 against mcr
-  #
-  # $1 - "$imageHashMap"
-  imageHashMap=$1
-
-  OLD_IFS=$IFS; IFS=' ' pmcImages=($(prepare-docker-image-names "$imageHashMap" | tr '\n' ' ')); IFS=$OLD_IFS
-  for image in "${pmcImages[@]}"
-  do
-    docker pull $image
-  done
 }
 
 prepare-docker-image-names()
@@ -332,5 +344,5 @@ test-released-artifact()
 test-released-images()
 {
   # Amalgam of test cases to test docker images in mcr
-  check-images-sha;
+  check-images-pmc-availability "release/1.3" "Publish Edge Agent Manifest"
 }
