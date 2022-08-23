@@ -16,13 +16,10 @@ get-latest-image-publication-run()
   # Note PipelineID = 223957 is  "Azure-IoT-Edge-Core Images Publish"
   [[ -z "$DEVOPS_PAT" ]] && { echo "\$DEVOPS_PAT variable is required to access Azure DevOps"; exit 1; }
 
-  echo "BEARWASHERE - get-latest-image-publication-run()"
   pipelineRuns=$(curl -s -u ":$DEVOPS_PAT" --request GET "https://dev.azure.com/msazure/One/_apis/pipelines/223957/runs?api-version=6.0")
-  echo "pipelineRuns: $pipelineRuns"
   OLD_IFS=$IFS
   IFS=' ' buildIds=( $(echo $pipelineRuns | jq '."value"[] | select(.result == "succeeded").id' | tr '\n' ' ') )
   IFS=$OLD_IFS
-  echo "buildIds: ${buildIds[@]}"
   for buildId in "${buildIds[@]}"
   do
     result=$(curl -s -u ":$DEVOPS_PAT" --request GET "https://dev.azure.com/msazure/One/_apis/build/builds/$buildId?api-version=6.0" | jq "select(.sourceBranch == \"refs/heads/$1\")")
@@ -43,8 +40,10 @@ get-build-logs-from-task()
   buildId=$1
   taskDisplayName=$2
 
+  echo "get-build-logs-from-task(): buildId=$buildId; taskDisplayName=($taskDisplayName)"
   logId=$(curl -s -u ":$DEVOPS_PAT" --request GET "https://dev.azure.com/msazure/One/_apis/build/builds/$buildId/timeline?api-version=6.0" | jq ".records[] | select(.name == \"$taskDisplayName\").log.id")
-  [[ -z "$logId" ]] && { echo "Failed to get log id for task ($taskDisplayName) with buildId ($1)"; exit 1; }
+  echo "logId=$logId"
+  [[ -z "$logId" ]] && { echo "Failed to get log id for task ($taskDisplayName) with buildId ($buildId)"; exit 1; }
   curl -s -u ":$DEVOPS_PAT" --request GET "https://dev.azure.com/msazure/One/_apis/build/builds/$buildId/logs/$logId?api-version=6.0"
 }
 
@@ -161,7 +160,7 @@ check-images-pmc-availability()
   buildId=$(get-latest-image-publication-run "$branchName")
   echo "$buildId"
 
-  logs=$(get-build-logs-from-task $buildId "$pipelineDisplayName")
+  logs=$(get-build-logs-from-task "$buildId" "$pipelineDisplayName")
   echo "$logs"
   imageHashMap=$(get-image-sha-from-devops-logs "$logs")
   echo "Checking the following images publication:"
