@@ -215,3 +215,5 @@ stages:
             # Source the scripts & Update version files
             sudo chmod +x $(Build.SourcesDirectory)/iotedge/scripts/linux/smokeTestHelper.sh
             source $(Build.SourcesDirectory)/iotedge/scripts/linux/smokeTestHelper.sh
+            
+            test-released-images

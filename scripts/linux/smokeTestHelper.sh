@@ -38,8 +38,10 @@ get-build-logs-from-task()
   [[ -z "$PAT" ]] && { echo "\$PAT variable is quired to access Azure DevOps"; exit 1; }
 
   buildId=$1
-  logId=$(curl -s -u :$PAT --request GET "https://dev.azure.com/msazure/One/_apis/build/builds/$buildId/timeline?api-version=6.0" | jq ".records[] | select(.name == \"$2\").log.id")
-  [[ -z "$logId" ]] && { echo "Failed to get log id for task ($2) with buildId ($1)"; exit 1; }
+  taskDisplayName=$2
+
+  logId=$(curl -s -u :$PAT --request GET "https://dev.azure.com/msazure/One/_apis/build/builds/$buildId/timeline?api-version=6.0" | jq ".records[] | select(.name == \"$taskDisplayName\").log.id")
+  [[ -z "$logId" ]] && { echo "Failed to get log id for task ($taskDisplayName) with buildId ($1)"; exit 1; }
   curl -s -u :$PAT --request GET "https://dev.azure.com/msazure/One/_apis/build/builds/$buildId/logs/$logId?api-version=6.0"
 }
 
@@ -53,7 +55,7 @@ get-image-sha-from-devops-logs()
   # /public/azureiotedge-agent:1.1.15-linux-arm32v7  sha256:1fe533ae64e73141154afcfe1b1244d765a61cc2cdfd5c0a8fa9303fe60a5951
   # /public/azureiotedge-agent:1.1.15-windows-amd64  sha256:a192aa2b9e203493ff69bb8dd5b0c7807664ff30f129bde4feb1988cac178929
 
-  # $1 - logs
+  # $1 - logs from DevOps image publication task
   moduleName=$(echo "$logs" | grep " image: " | head -1 | awk '{print substr($3, 4, length($3)-4)}')
   moduleSha=$(echo "$logs" | grep "Digest: " | awk '{print $3}')
   echo "$moduleName  $moduleSha" 
