@@ -14,10 +14,10 @@ get-latest-image-publication-run()
   # Look through "Azure-IoT-Edge-Core Images Publish" pipeline for the latest successful image publication run given the github branch
   # $1 - branch
   # Note PipelineID = 223957 is  "Azure-IoT-Edge-Core Images Publish"
-  [[ -z "$GITHUB_PAT" ]] && { echo "\$GITHUB_PAT variable is required to access Azure DevOps"; exit 1; }
+  [[ -z "$DEVOPS_PAT" ]] && { echo "\$DEVOPS_PAT variable is required to access Azure DevOps"; exit 1; }
 
   echo "BEARWASHERE - get-latest-image-publication-run()"
-  pipelineRuns=$(curl -s -u ":$GITHUB_PAT" --request GET "https://dev.azure.com/msazure/One/_apis/pipelines/223957/runs?api-version=6.0")
+  pipelineRuns=$(curl -s -u ":$DEVOPS_PAT" --request GET "https://dev.azure.com/msazure/One/_apis/pipelines/223957/runs?api-version=6.0")
   echo "pipelineRuns: $pipelineRuns"
   OLD_IFS=$IFS
   IFS=' ' buildIds=( $(echo $pipelineRuns | jq '."value"[] | select(.result == "succeeded").id' | tr '\n' ' ') )
@@ -25,7 +25,7 @@ get-latest-image-publication-run()
   echo "buildIds: ${buildIds[@]}"
   for buildId in "${buildIds[@]}"
   do
-    result=$(curl -s -u ":$GITHUB_PAT" --request GET "https://dev.azure.com/msazure/One/_apis/build/builds/$buildId?api-version=6.0" | jq "select(.sourceBranch == \"refs/heads/$1\")")
+    result=$(curl -s -u ":$DEVOPS_PAT" --request GET "https://dev.azure.com/msazure/One/_apis/build/builds/$buildId?api-version=6.0" | jq "select(.sourceBranch == \"refs/heads/$1\")")
     [[ -z "$result" ]] || { echo $buildId; return 0; }
   done
 
@@ -38,14 +38,14 @@ get-build-logs-from-task()
   # Get pipeline build logs for a given Task name for a given buildId
   # $1 - buildId
   # $2 - task display name
-  [[ -z "$GITHUB_PAT" ]] && { echo "\$GITHUB_PAT variable is required to access Azure DevOps"; exit 1; }
+  [[ -z "$DEVOPS_PAT" ]] && { echo "\$DEVOPS_PAT variable is required to access Azure DevOps"; exit 1; }
 
   buildId=$1
   taskDisplayName=$2
 
-  logId=$(curl -s -u ":$GITHUB_PAT" --request GET "https://dev.azure.com/msazure/One/_apis/build/builds/$buildId/timeline?api-version=6.0" | jq ".records[] | select(.name == \"$taskDisplayName\").log.id")
+  logId=$(curl -s -u ":$DEVOPS_PAT" --request GET "https://dev.azure.com/msazure/One/_apis/build/builds/$buildId/timeline?api-version=6.0" | jq ".records[] | select(.name == \"$taskDisplayName\").log.id")
   [[ -z "$logId" ]] && { echo "Failed to get log id for task ($taskDisplayName) with buildId ($1)"; exit 1; }
-  curl -s -u ":$GITHUB_PAT" --request GET "https://dev.azure.com/msazure/One/_apis/build/builds/$buildId/logs/$logId?api-version=6.0"
+  curl -s -u ":$DEVOPS_PAT" --request GET "https://dev.azure.com/msazure/One/_apis/build/builds/$buildId/logs/$logId?api-version=6.0"
 }
 
 get-image-sha-from-devops-logs()

@@ -210,7 +210,7 @@ stages:
         displayName: Released Images Smoke Tests
         condition: true
         env:
-          GITHUB_PAT: "$(GitHubAccessToken)"
+          DEVOPS_PAT: "$(DevOpsAccessToken)"
         inputs:
           targetType: 'inline'
           script: |
