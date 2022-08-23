@@ -209,11 +209,13 @@ stages:
       - task: Bash@3
         displayName: Released Images Smoke Tests
         condition: true
+        env:
+          GITHUB_PAT: "$(GitHubAccessToken)"
         inputs:
           targetType: 'inline'
           script: |
             # Source the scripts & Update version files
             sudo chmod +x $(Build.SourcesDirectory)/iotedge/scripts/linux/smokeTestHelper.sh
             source $(Build.SourcesDirectory)/iotedge/scripts/linux/smokeTestHelper.sh
-            
+
             test-released-images

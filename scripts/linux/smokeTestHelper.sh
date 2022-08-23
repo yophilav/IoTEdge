@@ -14,7 +14,7 @@ get-latest-image-publication-run()
   # Look through "Azure-IoT-Edge-Core Images Publish" pipeline for the latest successful image publication run given the github branch
   # $1 - branch
   # Note PipelineID = 223957 is  "Azure-IoT-Edge-Core Images Publish"
-  [[ -z "$PAT" ]] && { echo "\$PAT variable is quired to access Azure DevOps"; exit 1; }
+  [[ -z "$PAT" ]] && { echo "\$PAT variable is required to access Azure DevOps"; exit 1; }
 
   pipelineRuns=$(curl -s -u :$PAT --request GET "https://dev.azure.com/msazure/One/_apis/pipelines/223957/runs?api-version=6.0")
   OLD_IFS=$IFS
@@ -35,7 +35,7 @@ get-build-logs-from-task()
   # Get pipeline build logs for a given Task name for a given buildId
   # $1 - buildId
   # $2 - task display name
-  [[ -z "$PAT" ]] && { echo "\$PAT variable is quired to access Azure DevOps"; exit 1; }
+  [[ -z "$PAT" ]] && { echo "\$PAT variable is required to access Azure DevOps"; exit 1; }
 
   buildId=$1
   taskDisplayName=$2
