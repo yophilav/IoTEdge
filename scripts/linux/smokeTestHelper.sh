@@ -156,6 +156,7 @@ check-pmc-images-availability()
   for taskDisplayName in "${taskDisplayNames[@]}"
   do
     # Amalgam of test cases to test docker images in mcr
+    echo $'\n\n================================================\n\n'
     check-pmc-image-tags-availability "$sourceBranchName" "$taskDisplayName"
   done
 }
