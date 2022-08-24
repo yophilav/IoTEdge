@@ -225,6 +225,7 @@ download-artifact-from-pmc-apt()
   # $2 - target output directory
 
   pkgName=${1%=*}
+  sudo apt --fix-broken install > /dev/null
   uri=$(apt-get install --reinstall --print-uris -qq $1 | cut -d"'" -f2 | grep "/$pkgName/")
   [[ -z "$uri" ]] && { echo "[FAIL] Package ($1) cannot be found in a known linux repository"; exit 1;}
   artifactName=${uri##*/}
