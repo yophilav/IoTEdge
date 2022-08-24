@@ -294,13 +294,17 @@ setup-focal-source-apt()
   done
 
   echo "BEARWASHERE - 5"
-  sudo sed -i 's/bionic/focal/g' /etc/apt/sources.list && \
-  sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list && \
-  wget https://packages.microsoft.com/config/ubuntu/20.04/prod.list  -O /etc/apt/sources.list.d/microsoft-prod.list && \
+  sudo sed -i 's/bionic/focal/g' /etc/apt/sources.list
+  echo "BEARWASHERE - 6"
+  sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
+  echo "BEARWASHERE - 7"
+  wget https://packages.microsoft.com/config/ubuntu/20.04/prod.list  -O /etc/apt/sources.list.d/microsoft-prod.list
+  echo "BEARWASHERE - 8"
   sudo apt update -y && \
   sudo DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" dist-upgrade && \
   sudo apt update -y && \
   sudo apt upgrade -y
+  echo "BEARWASHERE - 9"
 }
 
 setup-config-apt()
