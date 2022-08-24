@@ -300,6 +300,7 @@ setup-focal-source-apt()
   echo "BEARWASHERE - 7"
   sudo wget -c https://packages.microsoft.com/config/ubuntu/20.04/prod.list -O /etc/apt/sources.list.d/microsoft-prod.list
   echo "BEARWASHERE - 8"
+  sudo apt --fix-broken install && \
   sudo apt update -y && \
   sudo DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" dist-upgrade && \
   sudo apt update -y && \
