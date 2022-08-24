@@ -225,7 +225,7 @@ download-artifact-from-pmc-apt()
   # $2 - target output directory
 
   pkgName=${1%=*}
-  sudo apt --fix-broken install > /dev/null
+  sudo apt --fix-broken install 
   uri=$(apt-get install --reinstall --print-uris -qq $1 | cut -d"'" -f2 | grep "/$pkgName/")
   [[ -z "$uri" ]] && { echo "[FAIL] Package ($1) cannot be found in a known linux repository"; exit 1;}
   artifactName=${uri##*/}
@@ -280,14 +280,6 @@ setup-focal-source-apt()
   # 1ES image for Ubuntu20.04 (Focal) actually has a misconfigured apt repo source
   # This function correct the repo source by directly configure the apt to point to 
   # the Microsoft Linux Repository for Focal.
-
-  echo "BEARWASHERE - 1"
-  ls -la /etc/apt/sources.list.d/*.list
-  echo "BEARWASHERE - 2"
-  sudo cat /etc/apt/sources.list.d/microsoft-prod.list
-  echo "BEARWASHERE - 3"
-  cat /etc/apt/sources.list.d/microsoft-prod.list
-  echo "BEARWASHERE - 4"
 
   for file in $(ls /etc/apt/sources.list.d/*.list)
   do
