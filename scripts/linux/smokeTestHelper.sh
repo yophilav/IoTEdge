@@ -1,4 +1,5 @@
 #! /bin/bash
+set -e
 
 get-latest-version-apt()
 {
@@ -193,6 +194,7 @@ check-images-pmc-availability()
 
   if $isFailed
   then 
+    echo "##vso[task.logissue type=error]The sha256 is missing."
     exit 1;
   fi
 }
