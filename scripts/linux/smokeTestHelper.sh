@@ -40,9 +40,8 @@ get-build-logs-from-task()
   buildId=$1
   taskDisplayName=$2
 
-  echo "get-build-logs-from-task(): buildId=$buildId; taskDisplayName=($taskDisplayName)"
   logId=$(curl -s -u ":$DEVOPS_PAT" --request GET "https://dev.azure.com/msazure/One/_apis/build/builds/$buildId/timeline?api-version=6.0" | jq ".records[] | select(.name == \"$taskDisplayName\").log.id")
-  echo "logId=$logId"
+
   [[ -z "$logId" ]] && { echo "Failed to get log id for task ($taskDisplayName) with buildId ($buildId)"; exit 1; }
   curl -s -u ":$DEVOPS_PAT" --request GET "https://dev.azure.com/msazure/One/_apis/build/builds/$buildId/logs/$logId?api-version=6.0"
 }
