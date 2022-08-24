@@ -285,7 +285,7 @@ setup-focal-source-apt()
     sudo sed -i 's/bionic/focal/g' $file
   done
 
-  sudo sed -i 's/bionic/focal/g' /etc/apt/sources.list
+  sudo sed -i 's/bionic/focal/g' /etc/apt/sources.list || true
   sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list || true
   wget https://packages.microsoft.com/config/ubuntu/20.04/prod.list  -O /etc/apt/sources.list.d/microsoft-prod.list && \
   sudo apt update -y && \
