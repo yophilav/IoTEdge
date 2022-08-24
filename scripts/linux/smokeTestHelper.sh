@@ -145,7 +145,22 @@ check-github-pmc-artifacts-similarity()
   fi
 }
 
-check-images-pmc-availability()
+check-pmc-images-availability()
+{
+  # Check docker images availability in the PMC against all image tags.
+  #
+  # $1 - Github branch name
+
+  sourceBranchName=$1
+  taskDisplayNames=("Publish Edge Agent Manifest" "Publish Edge Hub Manifest" "Publish Temperature Sensor Manifest" "Publish Diagnostic Module Manifest")
+  for taskDisplayName in "${taskDisplayNames[@]}"
+  do
+    # Amalgam of test cases to test docker images in mcr
+    check-pmc-image-tags-availability "$sourceBranchName" "$taskDisplayName"
+  done
+}
+
+check-pmc-image-tags-availability()
 {
   # Check if the images pulled using docker image name from MCR resolves the to the same image SHA 
   # which "Azure-IoT-Edge-Core Images Publish" pipeline claimed to publish to the MCR. 
@@ -158,7 +173,7 @@ check-images-pmc-availability()
   echo "Checking images published for $branchName ($pipelineDisplayName)"
 
   buildId=$(get-latest-image-publication-run "$branchName")
-  echo "$buildId"
+  echo "BuildId: $buildId"
 
   logs=$(get-build-logs-from-task "$buildId" "$pipelineDisplayName")
 
@@ -351,6 +366,6 @@ test-released-artifact()
 
 test-released-images()
 {
-  # Amalgam of test cases to test docker images in mcr
-  check-images-pmc-availability "release/1.3" "Publish Edge Agent Manifest"
+  #check-pmc-images-availability "$(Build.SourceBranchName)"
+  check-pmc-images-availability "release/1.3"
 }
