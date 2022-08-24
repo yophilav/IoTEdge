@@ -280,7 +280,7 @@ setup-focal-source-apt()
   # This function correct the repo source by directly configure the apt to point to 
   # the Microsoft Linux Repository for Focal.
 
-  for file in $(ls /etc/apt/sources.list.d/*.list)
+  for file in $(sudo ls /etc/apt/sources.list.d/*.list)
   do
     sudo sed -i 's/bionic/focal/g' $file
   done
