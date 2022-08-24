@@ -160,7 +160,7 @@ check-images-pmc-availability()
   echo "$buildId"
 
   logs=$(get-build-logs-from-task "$buildId" "$pipelineDisplayName")
-  echo "$logs"
+
   imageHashMap=$(get-image-sha-from-devops-logs "$logs")
   echo "Checking the following images publication:"
   echo "$imageHashMap"
