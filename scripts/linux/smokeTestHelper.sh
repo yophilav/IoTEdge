@@ -280,13 +280,20 @@ setup-focal-source-apt()
   # This function correct the repo source by directly configure the apt to point to 
   # the Microsoft Linux Repository for Focal.
 
-  sudo chmod -R u+rw /etc/apt/sources.list.d/*.list
+  echo "BEARWASHERE - 1"
+  ls -la /etc/apt/sources.list.d/*.list
+  echo "BEARWASHERE - 2"
+  sudo cat /etc/apt/sources.list.d/microsoft-prod.list
+  echo "BEARWASHERE - 3"
+  cat /etc/apt/sources.list.d/microsoft-prod.list
+  echo "BEARWASHERE - 4"
 
   for file in $(ls /etc/apt/sources.list.d/*.list)
   do
     sudo sed -i 's/bionic/focal/g' $file
   done
 
+  echo "BEARWASHERE - 5"
   sudo sed -i 's/bionic/focal/g' /etc/apt/sources.list && \
   sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list && \
   wget https://packages.microsoft.com/config/ubuntu/20.04/prod.list  -O /etc/apt/sources.list.d/microsoft-prod.list && \
