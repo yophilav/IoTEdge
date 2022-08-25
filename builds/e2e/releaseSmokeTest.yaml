@@ -16,49 +16,6 @@ stages:
   - stage: RunSmokeTest
     displayName: Smoke Test
     jobs:
-    # - job: linux
-    #   displayName: Linux
-    #   strategy:
-    #     matrix:
-    #       Centos75-amd64:
-    #         os: centos7
-    #         artifactName: iotedged-centos7-amd64
-    #         identityServiceArtifactName: packages_centos-7_amd64
-    #         identityServicePackageFilter: aziot-identity-service-*.x86_64.rpm
-    #       RedHat8-amd64:
-    #         os: redhat8
-    #         artifactName: iotedged-redhat8-amd64
-    #         identityServiceArtifactName: packages_redhat-ubi8-latest_amd64
-    #         identityServicePackageFilter: aziot-identity-service-*.x86_64.rpm
-    #   steps:
-    #     - task: AzureKeyVault@1
-    #       displayName: Get secrets
-    #       inputs:
-    #         azureSubscription: 'azureiotedge-arm'
-    #         keyVaultName: 'edgebuildkv'
-    #         secretsFilter: >-
-    #           GitHubAccessToken
-    #     - checkout: self
-    #     - task: DownloadPipelineArtifact@2
-    #       displayName: Download Pipeline Build Packages
-    #       inputs:
-    #         source: 'current'
-    #         path: $(System.ArtifactsDirectory)
-    #         patterns: |
-    #             $(artifactName)/*.deb
-    #             $(artifactName)/*.rpm
-    #     - task: PowerShell@2
-    #       displayName: 'Download aziot-identity-service'
-    #       inputs:
-    #         filePath: $(Build.SourcesDirectory)/scripts/local/test/DownloadIdentityService.ps1
-    #         workingDirectory: $(Build.SourcesDirectory)
-    #       env:
-    #         GITHUB_TOKEN: $(GitHubAccessToken)
-    #         ARTIFACT_NAME: $(identityServiceArtifactName)
-    #         PACKAGE_FILTER: $(identityServicePackageFilter)
-    #         DOWNLOAD_PATH: $(System.ArtifactsDirectory)/$(artifactName)
-    #         IDENTITY_SERVICE_COMMIT: $(aziotis.commit)
-
     - job: downloadArtifacts
       displayName: Release Artifact Smoke Tests
       strategy:
@@ -82,19 +39,24 @@ stages:
             os: ubuntu18.04
             arch: arm64
             ext: deb
-          
-          Ubuntu2004-amd64:
-            pool_name: 'Azure-IoT-Edge-1ES-Hosted-Linux'
-            agent_demands: 'ImageOverride -equals agent-aziotedge-ubuntu-20.04-docker'
-            os: ubuntu20.04
-            arch: amd64
-            ext: deb
-          Ubuntu2004-arm64:
-            pool_name: 'Azure-IoT-Edge-1ES-Hosted-Linux-Arm64'
-            agent_demands: 'ImageOverride -equals agent-aziotedge-ubuntu-20.04-arm64'
-            os: ubuntu20.04
-            arch: arm64
-            ext: deb
+
+          # (8/25) Currently PMC and 1ES teams are having fun with their prod which causes these to fail
+          #  - PMC: Has no proper signature for their repo which cause the apt-get to fail
+          #  - 1ES: The apt config was changed so now the repo pulls from a different source for /etc/apt/sources.list.d/microsoft-prod.list
+          #      We are going to wait this one out until they know what to do.
+          #          
+          # Ubuntu2004-amd64:
+          #   pool_name: 'Azure-IoT-Edge-1ES-Hosted-Linux'
+          #   agent_demands: 'ImageOverride -equals agent-aziotedge-ubuntu-20.04-docker'
+          #   os: ubuntu20.04
+          #   arch: amd64
+          #   ext: deb
+          # Ubuntu2004-arm64:
+          #   pool_name: 'Azure-IoT-Edge-1ES-Hosted-Linux-Arm64'
+          #   agent_demands: 'ImageOverride -equals agent-aziotedge-ubuntu-20.04-arm64'
+          #   os: ubuntu20.04
+          #   arch: arm64
+          #   ext: deb
       pool:
         name: $(pool_name)
         demands:
@@ -108,7 +70,6 @@ stages:
         displayName: Setup Test Agent
         condition: true
         name: SetupTestAgent
-        # BEARWASHERE -- "edgeletVersion" needs to be a pipeline variable
         inputs:
           targetType: 'inline'
           script: |
