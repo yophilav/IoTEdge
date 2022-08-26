@@ -370,5 +370,5 @@ test-released-artifact()
 test-released-images()
 {
   #check-pmc-images-availability "$(Build.SourceBranchName)"
-  check-pmc-images-availability "release/1.3"
+  check-pmc-images-availability "release/1.4"
 }
