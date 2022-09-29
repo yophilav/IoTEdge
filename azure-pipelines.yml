@@ -9,13 +9,6 @@ jobs:
     pool:
       vmImage: ubuntu-latest
     steps:
-      - task: AzureKeyVault@1
-        displayName: 'Get Secret'
-        inputs:
-          azureSubscription: $(az.subscription)
-          KeyVaultName: $(kv.name)
-          SecretsFilter: >-
-            edgebuild-service-principal-secret
       - bash: |
           az login --service-principal -p $(edgebuild-service-principal-secret) -u $(servicePrincipal.clientId) --tenant $(servicePrincipal.tenantId)
           az keyvault secret download -n "msint-spn-cert-pem" --vault-name "$(kv.name.pkgRelease)" --file "$(System.ArtifactsDirectory)/msint-spn-cert.pem"
