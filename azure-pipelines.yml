@@ -11,7 +11,9 @@ jobs:
           az login --service-principal --use-cert-sn-issuer --username $(servicePrincipal.clientId) --tenant $(servicePrincipal.tenantId) -p "$(System.ArtifactsDirectory)/msint-spn-cert.pem"
           az acr login -n msint
           rm -f "$(System.ArtifactsDirectory)/msint-spn-cert.pem"
-        name: Login msinternal
+        name: login_msinternal
+        displayname: Login msinternal
       - bash: |
           docker pull msint.azurecr.io/linuxrepos/repoclient:latest repoclient
-        name: pull repoclient
+        name: pull_repoclient
+        displayname: pull repoclient
