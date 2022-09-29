@@ -12,8 +12,6 @@ jobs:
           az acr login -n msint
           rm -f "$(System.ArtifactsDirectory)/msint-spn-cert.pem"
         name: login_msinternal
-        displayname: Login msinternal
       - bash: |
           docker pull msint.azurecr.io/linuxrepos/repoclient:latest repoclient
         name: pull_repoclient
-        displayname: pull repoclient
