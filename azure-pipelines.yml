@@ -10,9 +10,9 @@ jobs:
       vmImage: ubuntu-latest
     steps:
       - bash: |
-          az login --service-principal -p $(edgebuild-service-principal-secret) -u $(servicePrincipal.clientId) --tenant $(servicePrincipal.tenantId)
+          az login --service-principal -u "$(servicePrincipal.clientId)" --tenant "$(servicePrincipal.tenantId)" -p "$(edgebuild-service-principal-secret)"
           az keyvault secret download -n "msint-spn-cert-pem" --vault-name "$(kv.name.pkgRelease)" --file "$(System.ArtifactsDirectory)/msint-spn-cert.pem"
-          sudo chmod+x "$(System.ArtifactsDirectory)/msint-spn-cert.pem"
+          sudo chmod u+x "$(System.ArtifactsDirectory)/msint-spn-cert.pem"
           az login --service-principal --use-cert-sn-issuer --username "$(servicePrincipal.clientId.msint)" --tenant "$(servicePrincipal.tenantId.msint)" -p "$(System.ArtifactsDirectory)/msint-spn-cert.pem"
           az acr login -n msint
           rm -f "$(System.ArtifactsDirectory)/msint-spn-cert.pem"
