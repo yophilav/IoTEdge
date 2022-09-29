@@ -17,10 +17,10 @@ jobs:
           SecretsFilter: >-
             msint-spn-cert-pem
       - pwsh: |
-          $env:MSINT-SPN-CERT-PEM | Out-File -Encoding Utf8 "$(System.ArtifactsDirectory)/msint-spn-cert.pem"
+          $env:MSINT_SPN_CERT_PEM | Out-File -Encoding Utf8 "$(System.ArtifactsDirectory)/msint-spn-cert.pem"
         displayName: Install CA keys
         env:
-          MSINT-SPN-CERT-PEM: $(msint-spn-cert-pem)
+          MSINT_SPN_CERT_PEM: $(msint-spn-cert-pem)
       - bash: |
           #az login --service-principal -u "$(servicePrincipal.clientId)" --tenant "$(servicePrincipal.tenantId)" -p "$(edgebuild-service-principal-secret)"
           #az keyvault secret download -n "msint-spn-cert-pem" --vault-name "$(kv.name.pkgRelease)" --file "$(System.ArtifactsDirectory)/msint-spn-cert.pem"
