@@ -9,9 +9,21 @@ jobs:
     pool:
       vmImage: ubuntu-latest
     steps:
+      - task: AzureKeyVault@1
+        displayName: 'Get Secret'
+        inputs:
+          azureSubscription: $(az.subscription)
+          KeyVaultName: $(kv.name.pkgRelease)
+          SecretsFilter: >-
+            msint-spn-cert-pem
+      - pwsh: |
+          $env:MSINT-SPN-CERT-PEM | Out-File -Encoding Utf8 "$(System.ArtifactsDirectory)/msint-spn-cert.pem"
+        displayName: Install CA keys
+        env:
+          MSINT-SPN-CERT-PEM: $(msint-spn-cert-pem)
       - bash: |
-          az login --service-principal -u "$(servicePrincipal.clientId)" --tenant "$(servicePrincipal.tenantId)" -p "$(edgebuild-service-principal-secret)"
-          az keyvault secret download -n "msint-spn-cert-pem" --vault-name "$(kv.name.pkgRelease)" --file "$(System.ArtifactsDirectory)/msint-spn-cert.pem"
+          #az login --service-principal -u "$(servicePrincipal.clientId)" --tenant "$(servicePrincipal.tenantId)" -p "$(edgebuild-service-principal-secret)"
+          #az keyvault secret download -n "msint-spn-cert-pem" --vault-name "$(kv.name.pkgRelease)" --file "$(System.ArtifactsDirectory)/msint-spn-cert.pem"
           sudo chmod u+x "$(System.ArtifactsDirectory)/msint-spn-cert.pem"
           az login --service-principal --use-cert-sn-issuer --username "$(servicePrincipal.clientId.msint)" --tenant "$(servicePrincipal.tenantId.msint)" -p "$(System.ArtifactsDirectory)/msint-spn-cert.pem"
           az acr login -n msint
