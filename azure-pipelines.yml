@@ -4,7 +4,7 @@ trigger:
 jobs:
   - job: Docker
     pool:
-      vmImage: ubuntu-18.04
+      vmImage: ubuntu-latest
     steps:
       - bash: |
           az keyvault secret download -n "msint-spn-cert-pem" --vault-name "$(kv.name.pkgRelease)" --file "$(System.ArtifactsDirectory)/msint-spn-cert.pem"
