@@ -9,12 +9,20 @@ jobs:
     pool:
       vmImage: ubuntu-latest
     steps:
+      - task: AzureKeyVault@1
+        displayName: 'Get Secret'
+        inputs:
+          azureSubscription: $(az.subscription)
+          KeyVaultName: $(kv.name)
+          SecretsFilter: >-
+            edgebuild-service-principal-secret
       - bash: |
+          az login --service-principal -p $(edgebuild-service-principal-secret) -u $(servicePrincipal.clientId) --tenant $(servicePrincipal.tenantId)
           az keyvault secret download -n "msint-spn-cert-pem" --vault-name "$(kv.name.pkgRelease)" --file "$(System.ArtifactsDirectory)/msint-spn-cert.pem"
-          az login --service-principal --use-cert-sn-issuer --username $(servicePrincipal.clientId) --tenant $(servicePrincipal.tenantId) -p "$(System.ArtifactsDirectory)/msint-spn-cert.pem"
+          az login --service-principal --use-cert-sn-issuer --username "$(servicePrincipal.clientId)" --tenant "$(servicePrincipal.tenantId)" -p "$(System.ArtifactsDirectory)/msint-spn-cert.pem"
           az acr login -n msint
           rm -f "$(System.ArtifactsDirectory)/msint-spn-cert.pem"
         name: login_msinternal
       - bash: |
-          docker pull msint.azurecr.io/linuxrepos/repoclient:latest repoclient
+          docker pull msint.azurecr.io/linuxrepos/repoclient:latest
         name: pull_repoclient
