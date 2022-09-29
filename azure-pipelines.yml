@@ -1,6 +1,9 @@
 trigger:
   - master
 
+variables:
+  DisableDockerDetector: true
+
 jobs:
   - job: Docker
     pool:
