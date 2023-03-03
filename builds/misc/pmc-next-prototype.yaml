@@ -17,7 +17,7 @@ stages:
     displayName: Publish Artifacts
     jobs:
     - job: downloadArtifacts
-      displayName: Release Artifact Smoke Tests
+      displayName: Release Agent Setup
       strategy:
         matrix:
           Ubuntu1804-amd64:
@@ -40,16 +40,12 @@ stages:
       - checkout: azure-iotedge
         submodules: recursive
       - checkout: self
-      - task: Bash@3
-        displayName: Setup Test Agent
-        condition: true
-        name: SetupTestAgent
-        inputs:
-          targetType: 'inline'
-          script: |
+      - script: |
             wait-for-dpkg-lock 120
 
             if ! command -v jq &> /dev/null
             then
                 sudo apt-get install jq -y
             fi
+        name: SetupTestAgent
+        displayName: Setup Test Agent
