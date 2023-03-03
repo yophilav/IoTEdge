@@ -10,7 +10,7 @@ resources:
     type: github
     endpoint: azure-iot-edge-iotedge1-github
     name: azure/azure-iotedge
-    ref: release/1.4
+    ref: main
 
 stages:
   - stage: PublishArtifact
@@ -47,10 +47,6 @@ stages:
         inputs:
           targetType: 'inline'
           script: |
-            # Source the scripts & Update version files
-            sudo chmod +x $(Build.SourcesDirectory)/iotedge/scripts/linux/smokeTestHelper.sh
-            source $(Build.SourcesDirectory)/iotedge/scripts/linux/smokeTestHelper.sh
-
             wait-for-dpkg-lock 120
 
             if ! command -v jq &> /dev/null
