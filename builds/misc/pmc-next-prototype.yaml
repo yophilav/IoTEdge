@@ -10,7 +10,7 @@ resources:
     type: github
     endpoint: azure-iot-edge-iotedge1-github
     name: azure/azure-iotedge
-    ref: main
+    ref: 'yophilav/prototype-pmc-4_1.4'
 
 stages:
   - stage: PublishArtifact
