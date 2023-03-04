@@ -4,13 +4,13 @@ pr: none
 variables:
   DisableDockerDetector: true
 
-resources:
-  repositories:
-  - repository: azure-iotedge
-    type: github
-    endpoint: azure-iot-edge-iotedge1-github
-    name: azure/azure-iotedge
-    ref: 'yophilav/prototype-pmc-4_1.4'
+# resources:
+#   repositories:
+#   - repository: azure-iotedge
+#     type: github
+#     endpoint: azure-iot-edge-iotedge1-github
+#     name: azure/azure-iotedge
+#     ref: main
 
 stages:
   - stage: PublishArtifact
@@ -20,12 +20,17 @@ stages:
       displayName: Release Agent Setup
       strategy:
         matrix:
-          Ubuntu1804-amd64:
+          Ubuntu2004-amd64:
             pool_name: 'Azure-IoT-Edge-1ES-Hosted-Linux'
-            agent_demands: 'ImageOverride -equals agent-aziotedge-ubuntu-20.04-docker'
+            agent_demands: 'ImageOverride -equals agent-aziotedge-ubuntu-20.04-msmoby'
             os: ubuntu20.04
             arch: amd64
             ext: deb
+            artifactName: iotedged-ubuntu20.04-amd64
+            identityServiceArtifactName: packages_ubuntu-20.04_amd64
+            identityServicePackageFilter: aziot-identity-service_*_amd64.deb
+            # identityServicePackageFilter: aziot-identity-service_*_amd64.deb
+            # Proper  name: aziot-identity-service_1.4.0~dev-1_amd64.deb
           # Ubuntu1804-arm64:
           #   pool_name: 'Azure-IoT-Edge-1ES-Hosted-Linux-Arm64'
           #   agent_demands: 'ImageOverride -equals agent-aziotedge-ubuntu-18.04-arm64'
@@ -41,11 +46,12 @@ stages:
         submodules: recursive
       - checkout: self
       - script: |
-            wait-for-dpkg-lock 120
+          # Install pip
+          python3 -m pip install --user pipx
+          python3 -m pipx ensurepath
+          pipx install --index-url https://packages.microsoft.com/pmc-cli/simple/ "pmc-cli>=0.1.0"
 
-            if ! command -v jq &> /dev/null
-            then
-                sudo apt-get install jq -y
-            fi
-        name: SetupTestAgent
-        displayName: Setup Test Agent
+          # Download artifact
+          wget "https://github.com/Azure/azure-iotedge/releases/download/1.4.9/aziot-identity-service_1.4.3-1_ubuntu20.04_amd64.deb" -O "$(System.ArtifactsDirectory)/aziot-identity-service_1.4.3-1_ubuntu20.04_amd64.deb"
+        name: SetupAgent
+        displayName: Setup Agent
