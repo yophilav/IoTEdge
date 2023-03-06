@@ -4,14 +4,6 @@ pr: none
 variables:
   DisableDockerDetector: true
 
-# resources:
-#   repositories:
-#   - repository: azure-iotedge
-#     type: github
-#     endpoint: azure-iot-edge-iotedge1-github
-#     name: azure/azure-iotedge
-#     ref: main
-
 stages:
   - stage: PublishArtifact
     displayName: Publish Artifacts
@@ -31,27 +23,26 @@ stages:
             identityServicePackageFilter: aziot-identity-service_*_amd64.deb
             # identityServicePackageFilter: aziot-identity-service_*_amd64.deb
             # Proper  name: aziot-identity-service_1.4.0~dev-1_amd64.deb
-          # Ubuntu1804-arm64:
-          #   pool_name: 'Azure-IoT-Edge-1ES-Hosted-Linux-Arm64'
-          #   agent_demands: 'ImageOverride -equals agent-aziotedge-ubuntu-18.04-arm64'
-          #   os: ubuntu18.04
-          #   arch: arm64
-          #   ext: deb
       pool:
         name: $(pool_name)
         demands:
         - $(agent_demands)
       steps:
-      - checkout: azure-iotedge
-        submodules: recursive
       - checkout: self
       - script: |
           # Install pip
+          echo "Installing pipx"
           python3 -m pip install --user pipx
           python3 -m pipx ensurepath
           pipx install --index-url https://packages.microsoft.com/pmc-cli/simple/ "pmc-cli>=0.1.0"
+          echo "Finished installing pipx"
+          echo ""
 
           # Download artifact
+          echo "Downloading IIS artifact"
           wget "https://github.com/Azure/azure-iotedge/releases/download/1.4.9/aziot-identity-service_1.4.3-1_ubuntu20.04_amd64.deb" -O "$(System.ArtifactsDirectory)/aziot-identity-service_1.4.3-1_ubuntu20.04_amd64.deb"
+          echo ""
+          echo "Finished downloading IIS artifact"
+          ls -la "$(System.ArtifactsDirectory)"
         name: SetupAgent
         displayName: Setup Agent
