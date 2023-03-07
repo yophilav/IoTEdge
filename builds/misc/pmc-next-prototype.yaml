@@ -53,7 +53,7 @@ stages:
           scriptType: bash
           scriptLocation: inlineScript
           arguments: -p $(os) -w $(System.ArtifactsDirectory) -d $(System.ArtifactsDirectory)/$(artifactName) -s $(package-server-name)
-          script: |
+          inlineScript: |
             #Download Secrets - Requires az login and proper subscription to be selected
             echo "Downloading PMC prod cert"
             WDIR="$HOME/.config/pmc/"
