@@ -52,9 +52,6 @@ stages:
           which pipx
           echo ""
 
-          echo "upgrade pip"
-          python3 -m pip install -U pip
-
           echo "Install pmc"
           pipx install --index-url https://packages.microsoft.com/pmc-cli/simple/ "pmc-cli>=0.1.0"
           echo ""
