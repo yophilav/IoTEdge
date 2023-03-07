@@ -58,7 +58,7 @@ stages:
             WDIR="$HOME/.config/pmc"
             if [[ ! -d $WDIR ]]; then
                 echo "Creating PMC directory: $WDIR"
-                mkdir $WDIR
+                mkdir -p $WDIR
             fi
             CERT_FILE="$WDIR/private-key.pem"
             SETTING_FILE="$WDIR/settings.toml"
