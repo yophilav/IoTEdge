@@ -36,14 +36,24 @@ stages:
           python3 -m pip install --user --upgrade pip
 
           # record installed version
+          echo "Installed pipe version: "
           python3 -m pip --version
+          echo ""
           
           # Install pip
           echo "Installing pipx"
           python3 -m pip install --user pipx
           python3 -m pipx ensurepath
-          pipx install --index-url https://packages.microsoft.com/pmc-cli/simple/ "pmc-cli>=0.1.0"
+          export PATH=$PATH:$HOME/.local/bin
           echo "Finished installing pipx"
+          echo ""
+
+          echo "which pipx"
+          which pipx
+          echo "end which pipx"
+
+          ehoc "Install pmc"
+          pipx install --index-url https://packages.microsoft.com/pmc-cli/simple/ "pmc-cli>=0.1.0"
           echo ""
 
           # Download artifact
