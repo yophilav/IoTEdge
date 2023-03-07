@@ -72,5 +72,5 @@ stages:
             echo "Update setting with the installed certificate path"
             sed -i -e "s@PROD_CERT_PATH@$CERT_FILE@g" "$SETTING_FILE"
             cat $SETTING_FILE
-          displayName: Certificate Setup
+        displayName: Certificate Setup
 
