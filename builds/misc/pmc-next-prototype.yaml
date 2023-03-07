@@ -66,7 +66,7 @@ stages:
             echo "Downloading PMC prod cert"
             az keyvault secret download --vault-name iotedge-packages -n private-key-pem -f $CERT_FILE
             echo "Downloading PMC setting file"
-            az keyvault secret download --vault-name iotedge-packages -n pmc-v4-settings -f $SETTING_PATH
+            az keyvault secret download --vault-name iotedge-packages -n pmc-v4-settings -f $SETTING_FILE
 
             #Replace Server Name and Absolute Path of Private-key.pem and replace json
             echo "Update setting with the installed certificate path"
