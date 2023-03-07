@@ -55,8 +55,11 @@ stages:
           arguments: -p $(os) -w $(System.ArtifactsDirectory) -d $(System.ArtifactsDirectory)/$(artifactName) -s $(package-server-name)
           inlineScript: |
             #Download Secrets - Requires az login and proper subscription to be selected
-            echo "Downloading PMC prod cert"
-            WDIR="$HOME/.config/pmc/"
+            WDIR="$HOME/.config/pmc"
+            if [[ ! -d $WDIR ]]; then
+                echo "Creating PMC directory: $WDIR"
+                mkdir $WDIR
+            fi
             CERT_FILE="$WDIR/private-key.pem"
             SETTING_FILE="$WDIR/settings.toml"
 
