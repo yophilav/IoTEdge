@@ -63,14 +63,19 @@ stages:
             CERT_FILE="$WDIR/private-key.pem"
             SETTING_FILE="$WDIR/settings.toml"
 
-            echo "Downloading PMC prod cert"
+            echo "Downloading PMC prod cert: $CERT_FILE"
             az keyvault secret download --vault-name iotedge-packages -n private-key-pem -f $CERT_FILE
-            echo "Downloading PMC setting file"
+            echo "Downloading PMC setting file: $SETTING_FILE"
             az keyvault secret download --vault-name iotedge-packages -n pmc-v4-settings -f $SETTING_FILE
 
             #Replace Server Name and Absolute Path of Private-key.pem and replace json
-            echo "Update setting with the installed certificate path"
+            echo "Config PMC:"
             sed -i -e "s@PROD_CERT_PATH@$CERT_FILE@g" "$SETTING_FILE"
             cat $SETTING_FILE
         displayName: Certificate Setup
+
+      - script: |
+          pmc repo list
+        name: repolist
+        displayName: Repo List
 
