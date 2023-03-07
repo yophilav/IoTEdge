@@ -65,6 +65,13 @@ stages:
         name: SetupAgent
         displayName: Setup Agent
 
+      - task: PublishBuildArtifacts@1
+        displayName: Publish error logs
+        inputs:
+          PathtoPublish: '/home/cloudtest/.local/pipx/logs'
+          ArtifactName: 'pipxLogs'
+        condition: succeededOrFailed()
+
       - task: AzureCLI@2
         inputs:
           azureSubscription: $(az.subscription)
