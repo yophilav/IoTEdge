@@ -49,7 +49,9 @@ stages:
           python3 -m pip install --user pipx
           python3 -m pipx ensurepath
           export PATH=$PATH:$HOME/.local/bin
+
           python3 -m pip install --user -U pipx
+          python3 -m pip install --user httpx==0.23.0
 
           echo "which pipx"
           which pipx
