@@ -35,7 +35,7 @@ stages:
           sudo apt-get update -y
           sudo apt-get install -y python3.11 python3.11-dev python3.11-venv pkg-config
           # For cairo
-          sudo apt-get install -y libcairo2-dev libjpeg8-dev libpango1.0-dev libgif-dev build-essential g++
+          sudo apt-get install -y libcairo2-dev 
 
 
           echo "update-alternatives --install: "
@@ -297,7 +297,7 @@ stages:
             pyOpenSSL==19.0.0
             pyrsistent==0.15.5
             pyserial==3.4
-            python-apt==2.0.1
+            python-apt==0.7.8
             python-dateutil==2.7.3
             python-debian===0.1.36ubuntu1
             pytz==2019.3
