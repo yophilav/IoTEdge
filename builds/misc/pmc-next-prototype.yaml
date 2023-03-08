@@ -334,14 +334,14 @@ stages:
           "
           echo "Install pip requirements"
           echo "$PMC_REQ" > requirements.txt
-          python3 -m pip install --user -r requirements.txt
+          python3 -m pip install -r requirements.txt
 
           echo "which pipx"
           which pipx
           echo ""
 
           echo "Install pmc"
-          pipx install --index-url https://packages.microsoft.com/pmc-cli/simple/ "pmc-cli==0.2.0"
+          pipx install --index-url https://packages.microsoft.com/pmc-cli/simple/ "pmc-cli==0.1.0"
           echo ""
 
           #----------------------- OLD stuff
