@@ -68,7 +68,6 @@ stages:
             async-timeout==3.0.1
             attrs==19.3.0
             Automat==0.8.0
-            azure==4.0.0
             azure-ai-textanalytics==1.0.0b1
             azure-appconfiguration==1.0.0
             azure-applicationinsights==0.1.0
