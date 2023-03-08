@@ -347,29 +347,12 @@ stages:
           pipx install --index-url https://packages.microsoft.com/pmc-cli/simple/ "pmc-cli==0.1.0"
           echo ""
 
+
+          echo "pip list"
+          pip list
+          echo "<TheEnd>"
+          echo ""
           #----------------------- OLD stuff
-
-          #sudo apt-get install -y python3 python3-pip python3-venv
-
-          # Enable pip
-          #python3 -m pip install --user --upgrade pip
-
-          # record installed version
-          #echo "Installed pipe version: "
-          #python3 -m pip --version
-          #echo ""
-          
-          # Install pip
-          #echo "Installing pipx"
-          #python3 -m pip install --user pipx
-          #python3 -m pipx ensurepath
-          #export PATH=$PATH:$HOME/.local/bin
-          #echo "Finished installing pipx"
-          #echo ""
-
-          #echo "Install pmc"
-          #pipx install --index-url https://packages.microsoft.com/pmc-cli/simple/ "pmc-cli>=0.1.0"
-          #echo ""
 
           # Download artifact
           #echo "Downloading IIS artifact"
