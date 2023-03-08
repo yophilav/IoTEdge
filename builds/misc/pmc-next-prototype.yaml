@@ -33,7 +33,7 @@ stages:
           #BEARWASHERE -- Pipx needs python3.7+; current version of python is 3.11!
           sudo add-apt-repository -y ppa:deadsnakes/ppa
           sudo apt-get update -y
-          sudo apt-get install -y python3.11 python3.11-dev python3.11-venv python-apt pkg-config
+          sudo apt-get install -y python3.11 python3.11-dev python3.11-venv python3.11-apt pkg-config
           # For cairo
           sudo apt-get install -y libcairo2-dev
           # libjpeg8-dev libpango1.0-dev libgif-dev build-essential g++
