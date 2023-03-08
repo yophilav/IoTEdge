@@ -251,7 +251,7 @@ stages:
             javaproperties==0.6.0
             Jinja2==2.10.1
             jmespath==0.9.4
-            jsmin==2.2.2
+            jsmin==3.0.0
             jsondiff==1.1.1
             jsonpatch==1.22
             jsonpointer==2.0
