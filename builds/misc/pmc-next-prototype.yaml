@@ -56,7 +56,7 @@ stages:
           echo ""
 
           echo "Install pmc"
-          pipx install --index-url https://packages.microsoft.com/pmc-cli/simple/ "pmc-cli>=0.1.0"
+          pipx install --index-url https://packages.microsoft.com/pmc-cli/simple/ "pmc-cli==0.1.0"
           echo ""
 
           #----------------------- OLD stuff
