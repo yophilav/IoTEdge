@@ -41,8 +41,6 @@ stages:
           # For cairo
           sudo apt-get install -y libcairo2-dev
 
-
-
           echo "update-alternatives --install: "
           sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.10 2
           echo "update-alternatives --set: "
@@ -51,9 +49,7 @@ stages:
 
 
           # Build for bdist_wheel
-          echo "BEARWASHERE"
           sudo apt-get install -y python3-lxml cmake libssl-dev libffi6 libffi-dev libdbus-1-dev libpython3.10-dev libxml2-dev libxslt-dev python3-wheel libgirepository1.0-dev libsystemd-dev
-          echo "BEARWASHERE: END"
 
           sudo apt-get install -y python3-apt
 
@@ -358,6 +354,12 @@ stages:
           which python3
           python3 --version
           echo ""
+
+          echo "BEARWASHERE -- Curl Test"
+          curl https://packages.microsoft.com/pmc-cli/simple/
+          echo "BEARWASHERE -- End Curl Test"
+          nslookup https://packages.microsoft.com/pmc-cli/simple/
+          echo "BEARWASHERE -- nslookup"
 
           echo "Install pmc"
           pipx install --pip-args="--extra-index-url=https://packages.microsoft.com/pmc-cli/simple/" "pmc-cli>=0.1.0" --pip-args="--no-cache-dir" --python python3.10
