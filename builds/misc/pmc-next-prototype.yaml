@@ -359,12 +359,15 @@ stages:
 
 
           echo "pip list"
+          pip --version
+          python3 -m pip --version
           pip list
           echo "<TheEnd>"
           echo ""
 
           echo "pipx list"
           pipx list
+          python3 -m pipx --version
           echo ""
           #----------------------- OLD stuff
 
