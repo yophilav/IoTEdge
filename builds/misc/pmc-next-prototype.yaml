@@ -43,7 +43,9 @@ stages:
           # libjpeg8-dev libpango1.0-dev libgif-dev build-essential g++
 
           # Build for bdist_wheel
-          sudo apt-get install -y build-dep python3-lxml cmake libffi6 libffi-dev libdbus-1-dev libpython3.10-dev libxml2 and libxslt
+          echo "BEARWASHERE"
+          sudo apt-get install -y build-dep python3-lxml cmake libffi6 libffi-dev libdbus-1-dev libpython3.10-dev libxml2 libxslt
+          echo "BEARWASHERE: END"
 
           echo "update-alternatives --install: "
           sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.10 2
