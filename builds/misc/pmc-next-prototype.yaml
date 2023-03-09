@@ -347,7 +347,9 @@ stages:
           "
           echo "Install pip requirements"
           echo "$PMC_REQ" > requirements.txt
-          python3 -m pip install -r requirements.txt
+          #python3 -m pip install -r requirements.txt
+
+          cat requirements.txt | xargs -n 1 pipx install
 
           echo "which pipx"
           which pipx
