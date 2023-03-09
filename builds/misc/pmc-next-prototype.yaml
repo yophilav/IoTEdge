@@ -347,16 +347,16 @@ stages:
           "
           echo "Install pip requirements"
           echo "$PMC_REQ" > requirements.txt
-          #python3 -m pip install -r requirements.txt
+          python3 -m pip install -r requirements.txt
 
-          cat requirements.txt | xargs -n 1 pipx install
+          #cat requirements.txt | xargs -n 1 pipx install
 
-          echo "which pipx"
-          which pipx
+          echo "which python3"
+          which python3
           echo ""
 
           echo "Install pmc"
-          pipx install --index-url https://packages.microsoft.com/pmc-cli/simple/ "pmc-cli==0.1.0"
+          pipx install --index-url https://packages.microsoft.com/pmc-cli/simple/ "pmc-cli==0.1.0" --pip-args="--no-cache-dir"
           echo ""
 
 
