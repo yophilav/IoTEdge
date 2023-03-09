@@ -328,6 +328,7 @@ stages:
             sshtunnel==0.1.4
             systemd-python==234
             tabulate==0.8.6
+            tomli==2.0.1
             Twisted==18.9.0
             uamqp==1.6.4
             ubuntu-advantage-tools==8001
