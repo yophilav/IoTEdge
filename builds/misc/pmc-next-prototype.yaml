@@ -55,6 +55,7 @@ stages:
 
           echo "Installing pip"
           curl -sS https://bootstrap.pypa.io/get-pip.py | python3
+          export PATH=$PATH:$HOME/.local/bin
           echo ""
 
           PMC_REQ="
@@ -87,7 +88,6 @@ stages:
 
           echo "Install pmc"
           pip install --extra-index-url https://packages.microsoft.com/pmc-cli/simple/ "pmc-cli>=0.1.0" --python python3.10
-          export PATH=$PATH:$HOME/.local/bin
           echo ""
 
           echo "pip list"
