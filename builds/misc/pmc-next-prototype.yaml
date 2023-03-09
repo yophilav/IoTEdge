@@ -348,21 +348,8 @@ stages:
           echo "$PMC_REQ" > requirements.txt
           python3 -m pip install -r requirements.txt
 
-          #cat requirements.txt | xargs -n 1 pipx install
-
-          echo "which python3"
-          which python3
-          python3 --version
-          echo ""
-
-          echo "BEARWASHERE -- Curl Test"
-          curl https://packages.microsoft.com/pmc-cli/simple/
-          echo "BEARWASHERE -- End Curl Test"
-          nslookup https://packages.microsoft.com/pmc-cli/simple/
-          echo "BEARWASHERE -- nslookup"
-
           echo "Install pmc"
-          pip install --extra-index-url https://packages.microsoft.com/pmc-cli/simple/ "pmc-cli>=0.1.0" --pip-args="--no-cache-dir" --python python3.10
+          pip install --extra-index-url https://packages.microsoft.com/pmc-cli/simple/ "pmc-cli>=0.1.0" --python python3.10
           #pipx install --pip-args="--extra-index-url=https://packages.microsoft.com/pmc-cli/simple/" "pmc-cli>=0.1.0" --pip-args="--no-cache-dir" --python python3.10
           echo ""
 
