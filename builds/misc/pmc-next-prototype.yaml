@@ -275,7 +275,7 @@ stages:
             launchpadlib==1.10.13
             lazr.restfulclient==0.14.2
             lazr.uri==1.0.3
-            lxml==4.5.0
+            lxml==4.9.2
             MarkupSafe==1.1.0
             mock==3.0.5
             more-itertools==4.2.0
