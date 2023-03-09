@@ -362,6 +362,10 @@ stages:
           pip list
           echo "<TheEnd>"
           echo ""
+
+          echo "pipx list"
+          pipx list
+          echo ""
           #----------------------- OLD stuff
 
           # Download artifact
