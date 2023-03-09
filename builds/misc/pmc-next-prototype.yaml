@@ -362,9 +362,9 @@ stages:
           echo "BEARWASHERE -- nslookup"
 
           echo "Install pmc"
-          pipx install --pip-args="--extra-index-url=https://packages.microsoft.com/pmc-cli/simple/" "pmc-cli>=0.1.0" --pip-args="--no-cache-dir" --python python3.10
+          pip install --extra-index-url https://packages.microsoft.com/pmc-cli/simple/ "pmc-cli>=0.1.0" --pip-args="--no-cache-dir" --python python3.10
+          #pipx install --pip-args="--extra-index-url=https://packages.microsoft.com/pmc-cli/simple/" "pmc-cli>=0.1.0" --pip-args="--no-cache-dir" --python python3.10
           echo ""
-
 
           echo "pip list"
           pip --version
