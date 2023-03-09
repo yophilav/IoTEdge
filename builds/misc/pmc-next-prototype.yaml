@@ -134,6 +134,7 @@ stages:
         displayName: Certificate Setup
 
       - script: |
+          export PATH=$PATH:$HOME/.local/bin
           pmc repo list
         name: repolist
         displayName: Repo List
