@@ -96,7 +96,6 @@ stages:
 
           echo "Install pmc"
           pip install --extra-index-url https://packages.microsoft.com/pmc-cli/simple/ "pmc-cli>=0.1.0" --python python3.10
-          #pipx install --pip-args="--extra-index-url=https://packages.microsoft.com/pmc-cli/simple/" "pmc-cli>=0.1.0" --pip-args="--no-cache-dir" --python python3.10
           echo ""
 
           echo "pip list"
@@ -104,11 +103,6 @@ stages:
           python3 -m pip --version
           pip list
           echo "<TheEnd>"
-          echo ""
-
-          echo "pipx list"
-          pipx list
-          pipx list --include-injected
           echo ""
           #----------------------- OLD stuff
 
