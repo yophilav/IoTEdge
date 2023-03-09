@@ -40,11 +40,10 @@ stages:
           sudo apt-get install -y python3.10 python3.10-dev python3.10-venv pkg-config
           # For cairo
           sudo apt-get install -y libcairo2-dev
-          # libjpeg8-dev libpango1.0-dev libgif-dev build-essential g++
 
           # Build for bdist_wheel
           echo "BEARWASHERE"
-          sudo apt-get install -y python3-lxml cmake libssl-dev libffi6 libffi-dev libdbus-1-dev libpython3.10-dev libxml2-dev libxslt-dev
+          sudo apt-get install -y python3-lxml cmake libssl-dev libffi6 libffi-dev libdbus-1-dev libpython3.10-dev libxml2-dev libxslt-dev python3.10-wheel
           echo "BEARWASHERE: END"
 
           echo "update-alternatives --install: "
@@ -66,6 +65,7 @@ stages:
           source ~/.bashrc
 
           python3 -m pip install --user -U pipx
+          python3 -m pip install wheel #for wheel bs
 
           PMC_REQ="
             adal==1.2.2
