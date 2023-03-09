@@ -351,7 +351,6 @@ stages:
           echo "Install pip requirements"
           echo "$PMC_REQ" > requirements.txt
           python3 -m pip install -r requirements.txt
-          python3 -m ensurepip --upgrade
 
           #cat requirements.txt | xargs -n 1 pipx install
 
@@ -361,7 +360,7 @@ stages:
           echo ""
 
           echo "Install pmc"
-          pipx install --index-url https://packages.microsoft.com/pmc-cli/simple/ "pmc-cli==0.1.0" --pip-args="--no-cache-dir" --python python3.10
+          pipx install --pip-args="--extra-index-url=https://packages.microsoft.com/pmc-cli/simple/" "pmc-cli>=0.1.0" --pip-args="--no-cache-dir" --python python3.10
           echo ""
 
 
@@ -374,7 +373,7 @@ stages:
 
           echo "pipx list"
           pipx list
-          python3 -m pipx --version
+          pipx list --include-injected
           echo ""
           #----------------------- OLD stuff
 
