@@ -57,15 +57,6 @@ stages:
           curl -sS https://bootstrap.pypa.io/get-pip.py | python3
           echo ""
 
-          echo "Installing pipx"
-          python3 -m pip install --user pipx
-          python3 -m pipx ensurepath
-          export PATH=$PATH:$HOME/.local/bin
-          source ~/.bashrc
-
-          python3 -m pip install --user -U pipx
-          python3 -m pip install wheel #for wheel bs
-
           PMC_REQ="
             anyio==3.6.2
             certifi==2019.11.28
@@ -96,6 +87,7 @@ stages:
 
           echo "Install pmc"
           pip install --extra-index-url https://packages.microsoft.com/pmc-cli/simple/ "pmc-cli>=0.1.0" --python python3.10
+          export PATH=$PATH:$HOME/.local/bin
           echo ""
 
           echo "pip list"
