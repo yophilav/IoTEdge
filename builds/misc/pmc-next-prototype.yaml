@@ -52,7 +52,7 @@ stages:
 
           # Build for bdist_wheel
           echo "BEARWASHERE"
-          sudo apt-get install -y python3-lxml cmake libssl-dev libffi6 libffi-dev libdbus-1-dev libpython3.10-dev libxml2-dev libxslt-dev python3-wheel
+          sudo apt-get install -y python3-lxml cmake libssl-dev libffi6 libffi-dev libdbus-1-dev libpython3.10-dev libxml2-dev libxslt-dev python3-wheel libgirepository1.0-dev
           echo "BEARWASHERE: END"
 
           sudo apt-get install -y python3-apt
