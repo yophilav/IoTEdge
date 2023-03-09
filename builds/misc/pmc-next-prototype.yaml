@@ -351,6 +351,7 @@ stages:
           echo "Install pip requirements"
           echo "$PMC_REQ" > requirements.txt
           python3 -m pip install -r requirements.txt
+          python3 -m ensurepip --upgrade
 
           #cat requirements.txt | xargs -n 1 pipx install
 
