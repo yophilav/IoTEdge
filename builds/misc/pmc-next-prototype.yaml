@@ -44,7 +44,7 @@ stages:
 
           # Build for bdist_wheel
           echo "BEARWASHERE"
-          sudo apt-get install -y build-dep python3-lxml cmake libffi6 libffi-dev libdbus-1-dev libpython3.10-dev libxml2 libxslt
+          sudo apt-get install -y python3-lxml cmake libffi6 libffi-dev libdbus-1-dev libpython3.10-dev libxml2
           echo "BEARWASHERE: END"
 
           echo "update-alternatives --install: "
