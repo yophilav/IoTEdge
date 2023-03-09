@@ -280,7 +280,7 @@ stages:
             mock==3.0.5
             more-itertools==4.2.0
             msal==1.21.0
-            msal-extensions==0.3.1
+            msal-extensions==0.1.3
             msrest==0.6.10
             msrestazure==0.4.32
             multidict==4.7.3
