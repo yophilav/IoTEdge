@@ -328,7 +328,7 @@ stages:
             systemd-python==234
             tabulate==0.8.6
             Twisted==18.9.0
-            uamqp==1.2.6
+            uamqp==1.6.4
             ubuntu-advantage-tools==8001
             ufw==0.36
             unattended-upgrades==0.1
