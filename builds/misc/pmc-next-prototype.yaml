@@ -357,7 +357,7 @@ stages:
           echo ""
 
           echo "Install pmc"
-          pipx install --index-url https://packages.microsoft.com/pmc-cli/simple/ "pmc-cli==0.1.0" --pip-args="--no-cache-dir" --python python3.11
+          pipx install --index-url https://packages.microsoft.com/pmc-cli/simple/ "pmc-cli==0.1.0" --pip-args="--no-cache-dir" --python python3.10
           echo ""
 
 
