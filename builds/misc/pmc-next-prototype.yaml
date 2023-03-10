@@ -74,6 +74,7 @@ stages:
             typer==0.6.1
             urllib3==1.25.8
           "
+
           echo "Install pip requirements"
           echo "$PMC_REQ" > requirements.txt
           python3 -m pip install -r requirements.txt
@@ -122,6 +123,8 @@ stages:
             CERT_FILE="$WDIR/private-key.pem"
             SETTING_FILE="$WDIR/settings.toml"
 
+            echo "BEARWASHERE"
+            az keyvault secret show --id 'https://edgereleasekv.vault.azure.net/secrets/iotedge-esrp-signing-cert' --subscription IOT_EDGE_DEV1
             echo "Downloading PMC prod cert: $CERT_FILE"
             az keyvault secret download --vault-name iotedge-packages -n private-key-pem -f $CERT_FILE
             echo "Downloading PMC setting file: $SETTING_FILE"
