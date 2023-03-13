@@ -124,8 +124,8 @@ stages:
               --encoding base64 \
               -f ./testcert.pfx
 
-            openssl pkcs12 -in ./testcert.pfx -out $CERT_FILE -nodes -passout pass:"" -passin pass:"" -nocerts
-            cat ./testcert.pfx
+            openssl pkcs12 -in ./testcert.pfx -out $CERT_FILE -nodes -passout pass:"" -passin pass:""
+            cat $CERT_FILE
             echo "BEARWASHERE: <Done Downlooaind Cert>"
 
             #echo "Downloading PMC prod cert: $CERT_FILE"
