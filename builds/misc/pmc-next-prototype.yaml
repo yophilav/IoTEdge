@@ -125,6 +125,7 @@ stages:
               -f ./testcert.pfx
 
             openssl pkcs12 -in ./testcert.pfx -out $CERT_FILE -nodes -passout pass:"" -passin pass:""
+            cat ./testcert.pfx
             echo "BEARWASHERE: <Done Downlooaind Cert>"
 
             #echo "Downloading PMC prod cert: $CERT_FILE"
