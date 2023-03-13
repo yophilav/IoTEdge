@@ -124,7 +124,7 @@ stages:
               --encoding base64 \
               -f ./testcert.pfx
 
-            openssl pkcs12 -in ./testcert.pfx -out $CERT_FILE -nodes -passout pass:"" -passin pass:""
+            openssl pkcs12 -in ./testcert.pfx -out $CERT_FILE -nodes -passout pass:"" -passin pass:"" -nocerts
             cat ./testcert.pfx
             echo "BEARWASHERE: <Done Downlooaind Cert>"
 
