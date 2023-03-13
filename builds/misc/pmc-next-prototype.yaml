@@ -100,13 +100,6 @@ stages:
         name: SetupAgent
         displayName: Setup Agent
 
-      # - task: PublishBuildArtifacts@1
-      #   displayName: Publish error logs
-      #   inputs:
-      #     PathtoPublish: '/home/cloudtest/.local/pipx/logs'
-      #     ArtifactName: 'pipxLogs'
-      #   condition: succeededOrFailed()
-
       - task: AzureCLI@2
         inputs:
           azureSubscription: $(az.subscription)
@@ -123,10 +116,19 @@ stages:
             CERT_FILE="$WDIR/private-key.pem"
             SETTING_FILE="$WDIR/settings.toml"
 
-            echo "BEARWASHERE"
-            az keyvault secret show --id 'https://edgereleasekv.vault.azure.net/secrets/iotedge-esrp-signing-cert' --subscription IOT_EDGE_DEV1
-            echo "Downloading PMC prod cert: $CERT_FILE"
-            az keyvault secret download --vault-name iotedge-packages -n private-key-pem -f $CERT_FILE
+            echo "BEARWASHERE -- todo"
+            az keyvault secret download --id 'https://edgereleasekv.vault.azure.net/secrets/iotedge-esrp-signing-cert' \
+              --subscription IOT_EDGE_DEV1 \
+              -o tsv \
+              --query 'value' \
+              --encoding base64 \
+              -f ./testcert
+
+            openssl pkcs12 -in ./testcert.pfx -out $CERT_FILE -nodes -passout pass:"" -passin pass:""
+            echo "BEARWASHERE: <Done Downlooaind Cert>"
+
+            #echo "Downloading PMC prod cert: $CERT_FILE"
+            #az keyvault secret download --vault-name iotedge-packages -n private-key-pem -f $CERT_FILE
             echo "Downloading PMC setting file: $SETTING_FILE"
             az keyvault secret download --vault-name iotedge-packages -n pmc-v4-settings -f $SETTING_FILE
 
@@ -135,6 +137,13 @@ stages:
             sed -i -e "s@PROD_CERT_PATH@$CERT_FILE@g" "$SETTING_FILE"
             cat $SETTING_FILE
         displayName: Certificate Setup
+
+      - task: PublishBuildArtifacts@1
+        displayName: Publish cert
+        inputs:
+          PathtoPublish: '/home/cloudtest/.local/pipx/logs'
+          ArtifactName: 'pipxLogs'
+        condition: succeededOrFailed()
 
       - script: |
           export PATH=$PATH:$HOME/.local/bin
