@@ -138,12 +138,12 @@ stages:
             cat $SETTING_FILE
         displayName: Certificate Setup
 
-      - task: PublishBuildArtifacts@1
-        displayName: Publish cert
-        inputs:
-          PathtoPublish: '/home/cloudtest/.local/pipx/logs'
-          ArtifactName: 'pipxLogs'
-        condition: succeededOrFailed()
+      # - task: PublishBuildArtifacts@1
+      #   displayName: Publish cert
+      #   inputs:
+      #     PathtoPublish: '/home/cloudtest/.local/pipx/logs'
+      #     ArtifactName: 'pipxLogs'
+      #   condition: succeededOrFailed()
 
       - script: |
           export PATH=$PATH:$HOME/.local/bin
