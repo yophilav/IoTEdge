@@ -80,7 +80,7 @@ stages:
           python3 -m pip install -r requirements.txt
 
           echo "Install pmc"
-          pip install --extra-index-url https://packages.microsoft.com/pmc-cli/simple/ "pmc-cli>=0.1.0" --python python3.10
+          pip install --extra-index-url https://packages.microsoft.com/pmc-cli/simple/ "pmc-cli>=0.3.1" --python python3.10
           echo ""
 
           echo "pip list"
