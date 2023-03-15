@@ -117,7 +117,7 @@ stages:
             SETTING_FILE="$WDIR/settings.toml"
 
             echo "BEARWASHERE -- todo"
-            az keyvault secret download --id 'https://edgereleasekv.vault.azure.net/secrets/iotedge-esrp-signing-cert' \
+            az keyvault secret download --id 'https://edgereleasekv.vault.azure.net/secrets/iotedge-pmc-client-auth-prod' \
               --subscription IOT_EDGE_DEV1 \
               -o tsv \
               --query 'value' \
