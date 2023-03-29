@@ -92,11 +92,11 @@ stages:
           #----------------------- OLD stuff
 
           # Download artifact
-          #echo "Downloading IIS artifact"
-          #wget "https://github.com/Azure/azure-iotedge/releases/download/1.4.9/aziot-identity-service_1.4.3-1_ubuntu20.04_amd64.deb" -O "$(System.ArtifactsDirectory)/aziot-identity-service_1.4.3-1_ubuntu20.04_amd64.deb"
-          #echo ""
-          #echo "Finished downloading IIS artifact"
-          #ls -la "$(System.ArtifactsDirectory)"
+          echo "Downloading IIS artifact"
+          wget "https://github.com/Azure/azure-iotedge/releases/download/1.4.9/aziot-identity-service_1.4.3-1_ubuntu20.04_amd64.deb" -O "$(System.ArtifactsDirectory)/aziot-identity-service_1.4.3~test1_ubuntu20.04_amd64.deb"
+          echo ""
+          echo "Finished downloading IIS artifact"
+          ls -la "$(System.ArtifactsDirectory)"
         name: SetupAgent
         displayName: Setup Agent
 
@@ -154,8 +154,10 @@ stages:
           pmc repo list --offset 300
           pmc repo list --offset 400
 
-          #REPO_NAME=""
-          #pmc package deb list --repo $REPO_NAME
+          echo "BEARWASHERE"
+          # Look up "prod-apt" for relavant repo name
+          REPO_NAME="microsoft-ubuntu-focal-prod-apt"
+          pmc package deb list --repo $REPO_NAME
 
           # Upload a package
           #pmc package upload [FILE]
