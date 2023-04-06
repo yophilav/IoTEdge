@@ -92,10 +92,10 @@ stages:
           #----------------------- OLD stuff
 
           # Download artifact
-          echo "Downloading IIS artifact"
-          wget "https://github.com/Azure/azure-iotedge/releases/download/1.4.9/aziot-identity-service_1.4.3-1_ubuntu20.04_amd64.deb" -O "$(System.ArtifactsDirectory)/aziot-identity-service_1.4.3~test1_ubuntu20.04_amd64.deb"
+          echo "Downloading IE artifact"
+          wget "https://github.com/Azure/azure-iotedge/releases/download/1.4.9/aziot-edge_1.4.9-1_ubuntu20.04_amd64.deb" -O "$(System.ArtifactsDirectory)/aziot-edge_1.4.9~test1_ubuntu20.04_amd64.deb"
           echo ""
-          echo "Finished downloading IIS artifact"
+          echo "Finished downloading IE artifact"
           ls -la "$(System.ArtifactsDirectory)"
         name: SetupAgent
         displayName: Setup Agent
@@ -160,7 +160,8 @@ stages:
           # pmc package deb list --repo $REPO_NAME
 
           # Upload a package
-          pmc package upload "$(System.ArtifactsDirectory)/aziot-identity-service_1.4.3~test1_ubuntu20.04_amd64.deb"
+          pmc package upload "$(System.ArtifactsDirectory)/aziot-edge_1.4.9~test1_ubuntu20.04_amd64.deb"
+          # pmc --id-only package upload $FILE
 
           # Add one or more packages to a repo
           #pmc repo package update --add-packages $PKG_ID,... $REPO_MAME [$RELEASE]
