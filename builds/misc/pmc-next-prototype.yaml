@@ -93,7 +93,7 @@ stages:
 
           # Download artifact
           echo "Downloading IE artifact"
-          wget "https://packages.microsoft.com/ubuntu/20.04/prod/pool/main/a/aziot-edge/aziot-edge_1.4.9-1_amd64.deb" -O "$(System.ArtifactsDirectory)/aziot-edge_1.4.9~test1_amd64.deb"
+          wget "https://packages.microsoft.com/ubuntu/20.04/prod/pool/main/a/aziot-edge/aziot-edge_1.4.9-1_amd64.deb" -O "$(System.ArtifactsDirectory)/aziot-edge_1.4.9-1_amd64.deb"
           echo ""
           echo "Finished downloading IE artifact"
           ls -la "$(System.ArtifactsDirectory)"
@@ -160,7 +160,7 @@ stages:
           # pmc package deb list --repo $REPO_NAME
 
           # Upload a package
-          pmc package upload "$(System.ArtifactsDirectory)/aziot-edge_1.4.9~test1_amd64.deb"
+          pmc package upload "$(System.ArtifactsDirectory)/aziot-edge_1.4.9-1_amd64.deb"
           # pmc --id-only package upload $FILE
 
           # Add one or more packages to a repo
