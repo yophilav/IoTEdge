@@ -148,19 +148,19 @@ stages:
 
       - script: |
           export PATH=$PATH:$HOME/.local/bin
-          pmc repo list
-          pmc repo list --offset 100
-          pmc repo list --offset 200
-          pmc repo list --offset 300
-          pmc repo list --offset 400
+          # pmc repo list
+          # pmc repo list --offset 100
+          # pmc repo list --offset 200
+          # pmc repo list --offset 300
+          # pmc repo list --offset 400
 
           echo "BEARWASHERE"
           # Look up "prod-apt" for relavant repo name
-          REPO_NAME="microsoft-ubuntu-focal-prod-apt"
-          pmc package deb list --repo $REPO_NAME
+          # REPO_NAME="microsoft-ubuntu-focal-prod-apt"
+          # pmc package deb list --repo $REPO_NAME
 
           # Upload a package
-          #pmc package upload [FILE]
+          pmc package upload "$(System.ArtifactsDirectory)/aziot-identity-service_1.4.3~test1_ubuntu20.04_amd64.deb"
 
           # Add one or more packages to a repo
           #pmc repo package update --add-packages $PKG_ID,... $REPO_MAME [$RELEASE]
