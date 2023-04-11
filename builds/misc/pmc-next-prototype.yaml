@@ -93,10 +93,10 @@ stages:
 
           # Download artifact
           echo "Downloading IE artifact"
-          wget "https://packages.microsoft.com/ubuntu/20.04/prod/pool/main/a/aziot-edge/aziot-edge_1.4.9-1_amd64.deb" -O "$(System.ArtifactsDirectory)/aziot-edge_1.4.9-1_amd64.deb"
+          wget "https://packages.microsoft.com/ubuntu/20.04/prod/pool/main/a/aziot-edge/aziot-edge_1.4.9-1_amd64.deb" -O "$(Build.ArtifactStagingDirectory)/aziot-edge_1.4.9-1_amd64.deb"
           echo ""
           echo "Finished downloading IE artifact"
-          ls -la "$(System.ArtifactsDirectory)"
+          ls -la "$(Build.ArtifactStagingDirectory)"
         name: SetupAgent
         displayName: Setup Agent
 
@@ -105,7 +105,6 @@ stages:
           azureSubscription: $(az.subscription)
           scriptType: bash
           scriptLocation: inlineScript
-          arguments: -p $(os) -w $(System.ArtifactsDirectory) -d $(System.ArtifactsDirectory)/$(artifactName) -s $(package-server-name)
           inlineScript: |
             #Download Secrets - Requires az login and proper subscription to be selected
             WDIR="$HOME/.config/pmc"
@@ -145,7 +144,24 @@ stages:
       #     PathtoPublish: '/home/cloudtest/.local/pipx/logs'
       #     ArtifactName: 'pipxLogs'
       #   condition: succeededOrFailed()
-
+      - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@3
+        displayName: ESRP Binary CodeSigning
+        inputs:
+          ConnectedServiceName: "Azure IoT Edge Code Sign 3"
+          FolderPath: '$(Build.ArtifactStagingDirectory)'
+          Pattern: "*.deb"
+          SessionTimeout: 20
+          inlineOperation: |
+            [
+              {
+                "KeyCode": "CP-450779-Pgp",
+                "OperationCode": "LinuxSign",
+                "ToolName": "sign",
+                "ToolVersion": "1.0",
+                "Parameters": {}
+              }
+            ]
+          signConfigType: inlineSignParams
       - script: |
           export PATH=$PATH:$HOME/.local/bin
           # pmc repo list
@@ -160,7 +176,7 @@ stages:
           # pmc package deb list --repo $REPO_NAME
 
           # Upload a package
-          pmc package upload "$(System.ArtifactsDirectory)/aziot-edge_1.4.9-1_amd64.deb"
+          pmc package upload "$(Build.ArtifactStagingDirectory)/aziot-edge_1.4.9-1_amd64.deb"
           # pmc --id-only package upload $FILE
 
           # Add one or more packages to a repo
