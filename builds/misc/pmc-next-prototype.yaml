@@ -147,7 +147,7 @@ stages:
       - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@3
         displayName: ESRP Binary CodeSigning
         inputs:
-          ConnectedServiceName: "Azure IoT Edge Code Sign 3"
+          ConnectedServiceName: "aziotedge-pmc-v4-prod"
           FolderPath: '$(Build.ArtifactStagingDirectory)'
           Pattern: "*.deb"
           SessionTimeout: 20
