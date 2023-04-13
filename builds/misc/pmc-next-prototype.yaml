@@ -30,6 +30,11 @@ stages:
       steps:
       - checkout: self
       - script: |
+          # Workaround to install a python module for all users
+          sudo su
+          cd ~
+          umask 022
+
           # Install AzCli cuz it's required by the python modules
           curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
 
@@ -163,8 +168,7 @@ stages:
             ]
           signConfigType: inlineSignParams
       - script: |
-          pip install --extra-index-url https://packages.microsoft.com/pmc-cli/simple/ "pmc-cli>=0.3.1" --python python3.10
-          export PATH=$PATH:$HOME/.local/bin
+          # export PATH=$PATH:$HOME/.local/bin
           # pmc repo list
           # pmc repo list --offset 100
           # pmc repo list --offset 200
