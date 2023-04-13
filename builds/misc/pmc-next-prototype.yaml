@@ -161,11 +161,8 @@ stages:
           pip list
           echo "<TheEnd>"
           echo ""
-          #----------------------- OLD stuff
-        name: SetupPython
-        displayName: Setup Python & PMC
-      - script: |
-          export PATH=$PATH:$HOME/.local/bin
+          #----------------------- Done setup
+
           # pmc repo list
           # pmc repo list --offset 100
           # pmc repo list --offset 200
@@ -187,8 +184,6 @@ stages:
           # Remove one or more packages from a repo
           #pmc repo package update --remove-packages $PKG_ID,... $REPO_NAME [$RELEASE]
 
-          
-
-        name: repolist
-        displayName: Repo List
+        name: SetupPythonAndPMC
+        displayName: Setup Python & PMC
 
