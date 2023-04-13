@@ -102,11 +102,6 @@ stages:
             ]
           signConfigType: inlineSignParams
       - script: |
-          # Workaround to install a python module for all users
-          sudo su
-          cd ~
-          umask 022
-
           # Install AzCli cuz it's required by the python modules
           curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
 
