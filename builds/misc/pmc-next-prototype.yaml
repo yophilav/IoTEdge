@@ -163,6 +163,7 @@ stages:
             ]
           signConfigType: inlineSignParams
       - script: |
+          pip install --extra-index-url https://packages.microsoft.com/pmc-cli/simple/ "pmc-cli>=0.3.1" --python python3.10
           export PATH=$PATH:$HOME/.local/bin
           # pmc repo list
           # pmc repo list --offset 100
