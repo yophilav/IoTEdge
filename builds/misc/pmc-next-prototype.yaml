@@ -30,6 +30,78 @@ stages:
       steps:
       - checkout: self
       - script: |
+          # Download artifact
+          echo "Downloading IE artifact"
+          wget "https://packages.microsoft.com/ubuntu/20.04/prod/pool/main/a/aziot-edge/aziot-edge_1.4.9-1_amd64.deb" -O "$(Build.ArtifactStagingDirectory)/aziot-edge_1.4.9-1_amd64.deb"
+          echo ""
+          echo "Finished downloading IE artifact"
+          ls -la "$(Build.ArtifactStagingDirectory)"
+        name: DownloadIE
+        displayName: Setup Download IE
+
+      - task: AzureCLI@2
+        inputs:
+          azureSubscription: $(az.subscription)
+          scriptType: bash
+          scriptLocation: inlineScript
+          inlineScript: |
+            #Download Secrets - Requires az login and proper subscription to be selected
+            WDIR="$HOME/.config/pmc"
+            if [[ ! -d $WDIR ]]; then
+                echo "Creating PMC directory: $WDIR"
+                mkdir -p $WDIR
+            fi
+            CERT_FILE="$WDIR/private-key.pem"
+            SETTING_FILE="$WDIR/settings.toml"
+
+            echo "BEARWASHERE -- todo"
+            az keyvault secret download --id 'https://edgereleasekv.vault.azure.net/secrets/iotedge-pmc-client-auth-prod' \
+              --subscription IOT_EDGE_DEV1 \
+              -o tsv \
+              --query 'value' \
+              --encoding base64 \
+              -f ./testcert.pfx
+
+            openssl pkcs12 -in ./testcert.pfx -out $CERT_FILE -nodes -passout pass:"" -passin pass:""
+            cat $CERT_FILE
+            echo "BEARWASHERE: <Done Downlooaind Cert>"
+
+            #echo "Downloading PMC prod cert: $CERT_FILE"
+            #az keyvault secret download --vault-name iotedge-packages -n private-key-pem -f $CERT_FILE
+            echo "Downloading PMC setting file: $SETTING_FILE"
+            az keyvault secret download --vault-name iotedge-packages -n pmc-v4-settings -f $SETTING_FILE
+
+            #Replace Server Name and Absolute Path of Private-key.pem and replace json
+            echo "Config PMC:"
+            sed -i -e "s@PROD_CERT_PATH@$CERT_FILE@g" "$SETTING_FILE"
+            cat $SETTING_FILE
+        displayName: Certificate Setup
+
+      # - task: PublishBuildArtifacts@1
+      #   displayName: Publish cert
+      #   inputs:
+      #     PathtoPublish: '/home/cloudtest/.local/pipx/logs'
+      #     ArtifactName: 'pipxLogs'
+      #   condition: succeededOrFailed()
+      - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@3
+        displayName: ESRP Binary CodeSigning
+        inputs:
+          ConnectedServiceName: "aziotedge-pmc-v4-prod"
+          FolderPath: '$(Build.ArtifactStagingDirectory)'
+          Pattern: "*.deb"
+          SessionTimeout: 20
+          inlineOperation: |
+            [
+              {
+                "KeyCode": "CP-450779-Pgp",
+                "OperationCode": "LinuxSign",
+                "ToolName": "sign",
+                "ToolVersion": "1.0",
+                "Parameters": {}
+              }
+            ]
+          signConfigType: inlineSignParams
+      - script: |
           # Workaround to install a python module for all users
           sudo su
           cd ~
@@ -95,80 +167,10 @@ stages:
           echo "<TheEnd>"
           echo ""
           #----------------------- OLD stuff
-
-          # Download artifact
-          echo "Downloading IE artifact"
-          wget "https://packages.microsoft.com/ubuntu/20.04/prod/pool/main/a/aziot-edge/aziot-edge_1.4.9-1_amd64.deb" -O "$(Build.ArtifactStagingDirectory)/aziot-edge_1.4.9-1_amd64.deb"
-          echo ""
-          echo "Finished downloading IE artifact"
-          ls -la "$(Build.ArtifactStagingDirectory)"
-        name: SetupAgent
-        displayName: Setup Agent
-
-      - task: AzureCLI@2
-        inputs:
-          azureSubscription: $(az.subscription)
-          scriptType: bash
-          scriptLocation: inlineScript
-          inlineScript: |
-            #Download Secrets - Requires az login and proper subscription to be selected
-            WDIR="$HOME/.config/pmc"
-            if [[ ! -d $WDIR ]]; then
-                echo "Creating PMC directory: $WDIR"
-                mkdir -p $WDIR
-            fi
-            CERT_FILE="$WDIR/private-key.pem"
-            SETTING_FILE="$WDIR/settings.toml"
-
-            echo "BEARWASHERE -- todo"
-            az keyvault secret download --id 'https://edgereleasekv.vault.azure.net/secrets/iotedge-pmc-client-auth-prod' \
-              --subscription IOT_EDGE_DEV1 \
-              -o tsv \
-              --query 'value' \
-              --encoding base64 \
-              -f ./testcert.pfx
-
-            openssl pkcs12 -in ./testcert.pfx -out $CERT_FILE -nodes -passout pass:"" -passin pass:""
-            cat $CERT_FILE
-            echo "BEARWASHERE: <Done Downlooaind Cert>"
-
-            #echo "Downloading PMC prod cert: $CERT_FILE"
-            #az keyvault secret download --vault-name iotedge-packages -n private-key-pem -f $CERT_FILE
-            echo "Downloading PMC setting file: $SETTING_FILE"
-            az keyvault secret download --vault-name iotedge-packages -n pmc-v4-settings -f $SETTING_FILE
-
-            #Replace Server Name and Absolute Path of Private-key.pem and replace json
-            echo "Config PMC:"
-            sed -i -e "s@PROD_CERT_PATH@$CERT_FILE@g" "$SETTING_FILE"
-            cat $SETTING_FILE
-        displayName: Certificate Setup
-
-      # - task: PublishBuildArtifacts@1
-      #   displayName: Publish cert
-      #   inputs:
-      #     PathtoPublish: '/home/cloudtest/.local/pipx/logs'
-      #     ArtifactName: 'pipxLogs'
-      #   condition: succeededOrFailed()
-      - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@3
-        displayName: ESRP Binary CodeSigning
-        inputs:
-          ConnectedServiceName: "aziotedge-pmc-v4-prod"
-          FolderPath: '$(Build.ArtifactStagingDirectory)'
-          Pattern: "*.deb"
-          SessionTimeout: 20
-          inlineOperation: |
-            [
-              {
-                "KeyCode": "CP-450779-Pgp",
-                "OperationCode": "LinuxSign",
-                "ToolName": "sign",
-                "ToolVersion": "1.0",
-                "Parameters": {}
-              }
-            ]
-          signConfigType: inlineSignParams
+        name: SetupPython
+        displayName: Setup Python & PMC
       - script: |
-          # export PATH=$PATH:$HOME/.local/bin
+          export PATH=$PATH:$HOME/.local/bin
           # pmc repo list
           # pmc repo list --offset 100
           # pmc repo list --offset 200
