@@ -102,6 +102,26 @@ stages:
             ]
           signConfigType: inlineSignParams
       - script: |
+          #BEARWASHERE (4/14/23): Note to self:
+          # - PMC team switch the installation of PMC on my from regular pip to be using Az Artifacts
+          #   I didn't feel like doing that at the time since this whole proj has been a moving target
+          #   on what they wanna do. So I'll put this on pause.
+          #
+          # So far we have the following working: 
+          # - AAD app on AME called "aziotedge-pmc-v4-prod" which have 2 certs linked to them
+          #    1. iotedge-pmc-client-auth-prod : This cert is used to push/list artifact via PMC API
+          #       This cert was linked to the AAD using a tool/script provided to us by PMC team that needs
+          #       to be run in a SAW with AME account.
+          #    2. iotedge-pmc-prod-package-signing : This cert is used to signed our IE/IIS package via ESRP
+          #       This cert was linked to the AAD using "CN=<AADAppID>" in the cert header.
+          #       The cert is also setup on ADO using a Service Connection "aziotedge-pmc-v4-prod".
+          #
+          # What left to be done:
+          #  - Try to install PMC again
+          #  - Attempt to publish the artifact after signing it with `~test`
+          #  - Integrate the darn thing.
+
+
           # Install AzCli cuz it's required by the python modules
           curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
 
