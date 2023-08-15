@@ -53,6 +53,7 @@ stages:
             fi
             CERT_FILE="$WDIR/private-key.pem"
             SETTING_FILE="$WDIR/settings.toml"
+            DOCKER_CERT_FILE="/root/.config/pmc/private-key.pem"
 
             echo "BEARWASHERE -- todo"
             az keyvault secret download --id 'https://edgereleasekv.vault.azure.net/secrets/iotedge-pmc-client-auth-prod' \
@@ -73,9 +74,9 @@ stages:
 
             #Replace Server Name and Absolute Path of Private-key.pem and replace json
             echo "Config PMC:"
-            sed -i -e "s@PROD_CERT_PATH@$CERT_FILE@g" "$SETTING_FILE"
+            #sed -i -e "s@PROD_CERT_PATH@$CERT_FILE@g" "$SETTING_FILE"
+            sed -i -e "s@PROD_CERT_PATH@$DOCKER_CERT_FILE@g" "$SETTING_FILE"
             cat $SETTING_FILE
-            sudo chmod 066 $SETTING_FILE
         displayName: Certificate Setup
 
       # - task: PublishBuildArtifacts@1
