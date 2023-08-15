@@ -75,6 +75,7 @@ stages:
             echo "Config PMC:"
             sed -i -e "s@PROD_CERT_PATH@$CERT_FILE@g" "$SETTING_FILE"
             cat $SETTING_FILE
+            sudo chmod 066 $SETTING_FILE
         displayName: Certificate Setup
 
       # - task: PublishBuildArtifacts@1
