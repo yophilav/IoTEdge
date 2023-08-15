@@ -104,6 +104,12 @@ stages:
             ]
           signConfigType: inlineSignParams
 
+      - task: PublishPipelineArtifact@1
+        displayName: Publish signed artifacts
+        inputs:
+          targetPath: $(Build.ArtifactStagingDirectory)/**
+          artifactType: 'pipeline'
+
       - script: |
           #BEARWASHERE (4/14/23): Note to self:
           # - PMC team switch the installation of PMC on my from regular pip to be using Az Artifacts
@@ -226,7 +232,19 @@ stages:
 
           docker pull mcr.microsoft.com/pmc/pmc-cli
 
-          docker run --volume "$WDIR:/root/.config/pmc" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli repo list
+          # BEARWASHERE -- 
+          # - Find a signed test package.  -> may need to figureout how to sign pkg
+          # - Upload the package to be tested.
+          #docker run --volume "$WDIR:/root/.config/pmc" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli repo list
+          #docker run --volume "/path/to/pmc:/root/.config/pmc" --volume "/path/to/packages:/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli package upload packages/mypkg.deb
+          docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli package upload packages/
+
+          docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli repo list
+          docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli repo list --offset 100
+          docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli repo list --offset 200
+          docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli repo list --offset 300
+          docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli repo list --offset 400
+
 
         name: SetupDockerPMC
         displayName: Setup Docker PMC
