@@ -104,11 +104,11 @@ stages:
             ]
           signConfigType: inlineSignParams
 
-      - task: PublishPipelineArtifact@1
+      - task: PublishBuildArtifacts@1
         displayName: Publish signed artifacts
         inputs:
-          targetPath: $(Build.ArtifactStagingDirectory)/**
-          artifactType: 'pipeline'
+          PathtoPublish: $(Build.ArtifactStagingDirectory)
+          ArtifactName: 'iotedged'
 
       - script: |
           #BEARWASHERE (4/14/23): Note to self:
