@@ -220,5 +220,5 @@ stages:
 
           docker run --volume "$WDIR:/root/.config/pmc" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli repo list
 
-        name: SetupPythonAndPMC
+        name: SetupDockerPMC
         displayName: Setup Docker PMC
