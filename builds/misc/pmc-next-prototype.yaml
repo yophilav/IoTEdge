@@ -217,6 +217,11 @@ stages:
           fi
           SETTING_FILE="$WDIR/settings.toml"
 
+          cat $SETTING_FILE
+
+          echo "BEARWASHERE - ls WDIR"
+          ls $WDIR
+
           docker pull mcr.microsoft.com/pmc/pmc-cli
 
           docker run --volume "$WDIR:/root/.config/pmc" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli repo list
