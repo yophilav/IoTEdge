@@ -101,6 +101,7 @@ stages:
               }
             ]
           signConfigType: inlineSignParams
+
       - script: |
           #BEARWASHERE (4/14/23): Note to self:
           # - PMC team switch the installation of PMC on my from regular pip to be using Az Artifacts
@@ -183,19 +184,19 @@ stages:
           echo ""
           #----------------------- Done setup
 
-          # pmc repo list
+          pmc repo list
           # pmc repo list --offset 100
           # pmc repo list --offset 200
           # pmc repo list --offset 300
           # pmc repo list --offset 400
 
-          echo "BEARWASHERE"
+          # echo "BEARWASHERE"
           # Look up "prod-apt" for relavant repo name
           # REPO_NAME="microsoft-ubuntu-focal-prod-apt"
           # pmc package deb list --repo $REPO_NAME
 
           # Upload a package
-          pmc package upload "$(Build.ArtifactStagingDirectory)/aziot-edge_1.4.9-1_amd64.deb"
+          # pmc package upload "$(Build.ArtifactStagingDirectory)/aziot-edge_1.4.9-1_amd64.deb"
           # pmc --id-only package upload $FILE
 
           # Add one or more packages to a repo
@@ -207,3 +208,17 @@ stages:
         name: SetupPythonAndPMC
         displayName: Setup Python & PMC
 
+      - script: |
+          WDIR="$HOME/.config/pmc"
+          if [[ ! -d $WDIR ]]; then
+              echo "Creating PMC directory: $WDIR"
+              mkdir -p $WDIR
+          fi
+          SETTING_FILE="$WDIR/settings.toml"
+
+          docker pull mcr.microsoft.com/pmc/pmc-cli
+
+          docker run --volume "$WDIR:/root/.config/pmc" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli repo list
+
+        name: SetupPythonAndPMC
+        displayName: Setup Docker PMC
