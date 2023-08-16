@@ -237,8 +237,10 @@ stages:
           # - Upload the package to be tested.
           #docker run --volume "$WDIR:/root/.config/pmc" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli repo list
           #docker run --volume "/path/to/pmc:/root/.config/pmc" --volume "/path/to/packages:/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli package upload packages/mypkg.deb
-          docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli package upload packages/*.deb
+          docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli package upload /packages/*.deb
           #for file in ./*.{md,pem}; do echo $file; done
+          # list=""; for file in ./*.{md,pem}; do list=$file','$list; echo $list; done
+          # list=${list:0:-1}
 
 
           docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli repo list
