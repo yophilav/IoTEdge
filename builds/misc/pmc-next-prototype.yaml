@@ -32,7 +32,7 @@ stages:
       - script: |
           # Download artifact
           echo "Downloading IE artifact"
-          wget "https://packages.microsoft.com/ubuntu/20.04/prod/pool/main/a/aziot-edge/aziot-edge_1.4.9-1_amd64.deb" -O "$(Build.ArtifactStagingDirectory)/aziot-edge_1.4.9-1_amd64.deb"
+          wget "https://packages.microsoft.com/ubuntu/20.04/prod/pool/main/a/aziot-edge/aziot-edge_1.4.9-1_amd64.deb" -O "$(Build.ArtifactStagingDirectory)/aziot-edge_1.4.9-1_amd64~test.deb"
           echo ""
           echo "Finished downloading IE artifact"
           ls -la "$(Build.ArtifactStagingDirectory)"
@@ -237,7 +237,7 @@ stages:
           # - Upload the package to be tested.
           #docker run --volume "$WDIR:/root/.config/pmc" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli repo list
           #docker run --volume "/path/to/pmc:/root/.config/pmc" --volume "/path/to/packages:/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli package upload packages/mypkg.deb
-          docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli package upload packages/*.{deb,rpm}
+          docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli package upload packages/*.deb
           #for file in ./*.{md,pem}; do echo $file; done
 
 
