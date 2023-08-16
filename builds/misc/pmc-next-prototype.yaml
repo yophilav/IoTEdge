@@ -32,7 +32,8 @@ stages:
       - script: |
           # Download artifact
           echo "Downloading IE artifact"
-          wget "https://packages.microsoft.com/ubuntu/20.04/prod/pool/main/a/aziot-edge/aziot-edge_1.4.9-1_amd64.deb" -O "$(Build.ArtifactStagingDirectory)/aziot-edge_1.4.9-1_amd64~test.deb"
+          wget "https://packages.microsoft.com/ubuntu/20.04/prod/pool/main/a/aziot-edge/aziot-edge_1.4.9-1_amd64.deb" -O "$(Build.ArtifactStagingDirectory)/aziot-edge_1.4.9~test-1_amd64.deb"
+          wget "https://packages.microsoft.com/ubuntu/20.04/prod/pool/main/a/aziot-edge/aziot-edge_1.4.9-1_arm64.deb" -O "$(Build.ArtifactStagingDirectory)/aziot-edge_1.4.9~test-1_arm64.deb"
           echo ""
           echo "Finished downloading IE artifact"
           ls -la "$(Build.ArtifactStagingDirectory)"
@@ -111,113 +112,6 @@ stages:
           ArtifactName: 'iotedged'
 
       - script: |
-          #BEARWASHERE (4/14/23): Note to self:
-          # - PMC team switch the installation of PMC on my from regular pip to be using Az Artifacts
-          #   I didn't feel like doing that at the time since this whole proj has been a moving target
-          #   on what they wanna do. So I'll put this on pause.
-          #
-          # So far we have the following working: 
-          # - AAD app on AME called "aziotedge-pmc-v4-prod" which have 2 certs linked to them
-          #    1. iotedge-pmc-client-auth-prod : This cert is used to push/list artifact via PMC API
-          #       This cert was linked to the AAD using a tool/script provided to us by PMC team that needs
-          #       to be run in a SAW with AME account.
-          #    2. iotedge-pmc-prod-package-signing : This cert is used to signed our IE/IIS package via ESRP
-          #       This cert was linked to the AAD using "CN=<AADAppID>" in the cert header.
-          #       The cert is also setup on ADO using a Service Connection "aziotedge-pmc-v4-prod".
-          #
-          # What left to be done:
-          #  - Try to install PMC again
-          #  - Attempt to publish the artifact after signing it with `~test`
-          #  - Integrate the darn thing.
-
-
-          # Install AzCli cuz it's required by the python modules
-          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
-
-          #BEARWASHERE -- Pipx needs python3.7+; current version of python is 3.11. That doesn't work because bdist_wheel  can't compile with python11
-          # Downgrading to python3.10
-          sudo add-apt-repository -y ppa:deadsnakes/ppa
-          sudo apt-get update -y
-          sudo apt-get install -y python3.10 python3.10-dev python3.10-venv pkg-config
-
-          echo "update-alternatives --install: "
-          sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.10 2
-          echo "update-alternatives --set: "
-          sudo update-alternatives --set python3 /usr/bin/python3.10
-          echo ""
-
-          echo "Installing pip"
-          curl -sS https://bootstrap.pypa.io/get-pip.py | python3
-          export PATH=$PATH:$HOME/.local/bin
-          echo ""
-
-          PMC_REQ="
-            anyio==3.6.2
-            certifi==2019.11.28
-            chardet==3.0.4
-            cffi==1.15.1
-            Click==7.1.1
-            cryptography>=38.0.0
-            h11==0.12.0
-            httpcore==0.15.0
-            httpx==0.23.0
-            idna==2.8
-            msal==1.19.0
-            pycparser==2.19
-            pydantic==1.10.2
-            PyJWT==1.7.1
-            pyOpenSSL==22.1.0
-            requests==2.22.0
-            rfc3986==1.5.0
-            sniffio==1.3.0
-            tomli==2.0.1
-            tomli-w==1.0.0
-            typer==0.6.1
-            urllib3==1.25.8
-          "
-
-          echo "Install pip requirements"
-          echo "$PMC_REQ" > requirements.txt
-          python3 -m pip install -r requirements.txt
-
-          echo "Install pmc"
-          pip install --index-url https://msazure.pkgs.visualstudio.com/_packaging/Compute-PMC/pypi/simple/ "pmc-cli>0.0"
-          echo ""
-
-          echo "pip list"
-          pip --version
-          python3 -m pip --version
-          pip list
-          echo "<TheEnd>"
-          echo ""
-          #----------------------- Done setup
-
-          pmc repo list
-          # pmc repo list --offset 100
-          # pmc repo list --offset 200
-          # pmc repo list --offset 300
-          # pmc repo list --offset 400
-
-          # echo "BEARWASHERE"
-          # Look up "prod-apt" for relavant repo name
-          # REPO_NAME="microsoft-ubuntu-focal-prod-apt"
-          # pmc package deb list --repo $REPO_NAME
-
-          # Upload a package
-          # pmc package upload "$(Build.ArtifactStagingDirectory)/aziot-edge_1.4.9-1_amd64.deb"
-          # pmc --id-only package upload $FILE
-
-          # Add one or more packages to a repo
-          #pmc repo package update --add-packages $PKG_ID,... $REPO_MAME [$RELEASE]
-
-          # Remove one or more packages from a repo
-          #pmc repo package update --remove-packages $PKG_ID,... $REPO_NAME [$RELEASE]
-
-        condition: false
-        name: SetupPythonAndPMC
-        displayName: Setup Python & PMC
-
-      - script: |
           WDIR="$HOME/.config/pmc"
           if [[ ! -d $WDIR ]]; then
               echo "Creating PMC directory: $WDIR"
@@ -235,20 +129,22 @@ stages:
           # BEARWASHERE -- 
           # - Find a signed test package.  -> may need to figureout how to sign pkg
           # - Upload the package to be tested.
-          #docker run --volume "$WDIR:/root/.config/pmc" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli repo list
-          #docker run --volume "/path/to/pmc:/root/.config/pmc" --volume "/path/to/packages:/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli package upload packages/mypkg.deb
-          docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli ls -la
-          docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli package upload /packages/*.deb
-          #for file in ./*.{md,pem}; do echo $file; done
-          # list=""; for file in ./*.{md,pem}; do list=$file','$list; echo $list; done
-          # list=${list:0:-1}
+            #docker run --volume "$WDIR:/root/.config/pmc" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli repo list
+            #docker run --volume "/path/to/pmc:/root/.config/pmc" --volume "/path/to/packages:/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli package upload packages/mypkg.deb
+            #docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli package upload packages/*.deb
+            #docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli package upload packages/
+          output=$(docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli package upload packages/)
+          packageIds=$(echo $output | jq '.[]."id"' | tr '\n' ' ' | tr -d '"')
+          idList=""; for id in $packageIds; do idList=$id','$idList; echo $idList; done; idList=${idList:0:-1}
+          docker run --volume "$WDIR:/root/.config/pmc" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli --add-packages $idList "microsoft-ubuntu-focal-prod-apt" "1.4.9"
 
+            # list=""; for file in $(find $PDIR -name '*.deb' -o -name '*.rpm' -type f | grep -oP "[^/]*$"); do list=packages/$file','$list; echo $list; done; list=${list:0:-1}
 
-          docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli repo list
-          docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli repo list --offset 100
-          docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli repo list --offset 200
-          docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli repo list --offset 300
-          docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli repo list --offset 400
+            # docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli repo list
+            # docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli repo list --offset 100
+            # docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli repo list --offset 200
+            # docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli repo list --offset 300
+            # docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli repo list --offset 400
 
 
         name: SetupDockerPMC
