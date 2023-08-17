@@ -46,7 +46,6 @@ stages:
           scriptType: bash
           scriptLocation: inlineScript
           inlineScript: |
-            apt-get install -y jq 
             #Download Secrets - Requires az login and proper subscription to be selected
             WDIR="$HOME/.config/pmc"
             if [[ ! -d $WDIR ]]; then
@@ -113,6 +112,8 @@ stages:
           ArtifactName: 'iotedged'
 
       - script: |
+          apt-get install -y jq 
+
           WDIR="$HOME/.config/pmc"
           if [[ ! -d $WDIR ]]; then
               echo "Creating PMC directory: $WDIR"
