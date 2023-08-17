@@ -46,6 +46,7 @@ stages:
           scriptType: bash
           scriptLocation: inlineScript
           inlineScript: |
+            apt-get install -y jq 
             #Download Secrets - Requires az login and proper subscription to be selected
             WDIR="$HOME/.config/pmc"
             if [[ ! -d $WDIR ]]; then
@@ -133,6 +134,7 @@ stages:
             #docker run --volume "/path/to/pmc:/root/.config/pmc" --volume "/path/to/packages:/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli package upload packages/mypkg.deb
             #docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli package upload packages/*.deb
             #docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli package upload packages/
+          rm -f "$(Build.ArtifactStagingDirectory)*.md"
           output=$(docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli package upload packages/)
           packageIds=$(echo $output | jq '.[]."id"' | tr '\n' ' ' | tr -d '"')
           idList=""; for id in $packageIds; do idList=$id','$idList; echo $idList; done; idList=${idList:0:-1}
