@@ -112,7 +112,7 @@ stages:
           ArtifactName: 'iotedged'
 
       - script: |
-          apt-get install -y jq 
+          sudo apt-get install -y jq 
 
           WDIR="$HOME/.config/pmc"
           if [[ ! -d $WDIR ]]; then
