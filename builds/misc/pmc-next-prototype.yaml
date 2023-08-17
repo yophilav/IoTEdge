@@ -132,7 +132,10 @@ stages:
             #docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli package upload packages/*.deb
             #docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli package upload packages/
 
-          rm -f "$(Build.ArtifactStagingDirectory)*.md"
+          TEMP_DIR=$(pwd)
+          cd $(Build.ArtifactStagingDirectory)
+          rm -f *.md
+          cd $TEMP_DIR
           echo "BEARWASHERE"
           ls $(Build.ArtifactStagingDirectory)
           output=$(docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli package upload packages/)
