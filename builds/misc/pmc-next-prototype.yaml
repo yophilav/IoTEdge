@@ -122,9 +122,6 @@ stages:
 
           cat $SETTING_FILE
 
-          echo "BEARWASHERE - ls WDIR"
-          ls $WDIR
-
           docker pull mcr.microsoft.com/pmc/pmc-cli
 
           # BEARWASHERE -- 
@@ -134,7 +131,10 @@ stages:
             #docker run --volume "/path/to/pmc:/root/.config/pmc" --volume "/path/to/packages:/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli package upload packages/mypkg.deb
             #docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli package upload packages/*.deb
             #docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli package upload packages/
+
           rm -f "$(Build.ArtifactStagingDirectory)*.md"
+          echo "BEARWASHERE"
+          ls $(Build.ArtifactStagingDirectory)
           output=$(docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli package upload packages/)
           packageIds=$(echo $output | jq '.[]."id"' | tr '\n' ' ' | tr -d '"')
           idList=""; for id in $packageIds; do idList=$id','$idList; echo $idList; done; idList=${idList:0:-1}
