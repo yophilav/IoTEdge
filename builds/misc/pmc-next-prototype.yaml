@@ -136,21 +136,14 @@ stages:
           rm -f "$(Build.ArtifactStagingDirectory)"/*.md
           echo "BEARWASHERE"
           ls $(Build.ArtifactStagingDirectory)
-          output=$(docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli package upload packages/)
-          packageIds=$(echo $output | jq '.[]."id"' | tr '\n' ' ' | tr -d '"')
-          idList=""; for id in $packageIds; do idList=$id','$idList; echo $idList; done; idList=${idList:0:-1}
+          UPLOAD_OUTPUT=$(docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli package upload packages/)
+          PACKAGE_IDS=$(echo $UPLOAD_OUTPUT | jq '.[]."id"' | tr '\n' ' ' | tr -d '"')
+          ID_LIST=""; for ID in $PACKAGE_IDS; do ID_LIST=$ID','$ID_LIST; echo $ID_LIST; done; ID_LIST=${ID_LIST:0:-1}
           # BEARWASHERE -- This depends on each of the repo which can be find out with the URL
           # https://packages.microsoft.com/repos/microsoft-ubuntu-focal-prod/dists/
-          docker run --volume "$WDIR:/root/.config/pmc" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli repo package update --add-packages $idList "microsoft-ubuntu-focal-prod-apt" "focal"
-
-            # list=""; for file in $(find $PDIR -name '*.deb' -o -name '*.rpm' -type f | grep -oP "[^/]*$"); do list=packages/$file','$list; echo $list; done; list=${list:0:-1}
-
-            # docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli repo list
-            # docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli repo list --offset 100
-            # docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli repo list --offset 200
-            # docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli repo list --offset 300
-            # docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli repo list --offset 400
-
+          REPO_NAME="microsoft-ubuntu-focal-prod-apt"
+          docker run --volume "$WDIR:/root/.config/pmc" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli repo package update --add-packages $ID_LIST $REPO_NAME "focal"
+          docker run --volume "$WDIR:/root/.config/pmc" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli repo publish $REPO_NAME
 
         name: SetupDockerPMC
         displayName: Setup Docker PMC
