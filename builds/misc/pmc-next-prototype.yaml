@@ -91,7 +91,7 @@ stages:
         inputs:
           ConnectedServiceName: "aziotedge-pmc-v4-prod"
           FolderPath: '$(Build.ArtifactStagingDirectory)'
-          Pattern: "*.deb"
+          Pattern: "*.deb, *.rpm"
           SessionTimeout: 20
           inlineOperation: |
             [
@@ -142,10 +142,10 @@ stages:
           # BEARWASHERE -- This depends on each of the repo which can be find out with the URL
           # https://packages.microsoft.com/repos/microsoft-ubuntu-focal-prod/dists/
           REPO_NAME="microsoft-ubuntu-focal-prod-apt"
-          docker run --volume "$WDIR:/root/.config/pmc" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli repo package update --add-packages $ID_LIST "$REPO_NAME" "focal"
-          docker run --volume "$WDIR:/root/.config/pmc" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli repo publish "$REPO_NAME"
+          # docker run --volume "$WDIR:/root/.config/pmc" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli repo package update --add-packages $ID_LIST "$REPO_NAME" "focal"
+          # docker run --volume "$WDIR:/root/.config/pmc" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli repo publish "$REPO_NAME"
 
-          docker run --volume "$WDIR:/root/.config/pmc" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli distro list --repository "$REPO_NAME"
+          # docker run --volume "$WDIR:/root/.config/pmc" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli distro list --repository "$REPO_NAME"
 
         name: SetupDockerPMC
         displayName: Setup Docker PMC
