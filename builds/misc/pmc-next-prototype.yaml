@@ -64,12 +64,16 @@ stages:
               --encoding base64 \
               -f ./testcert.pfx
 
-            openssl pkcs12 -in ./testcert.pfx -out $CERT_FILE -nodes -passout pass:"" -passin pass:""
+            az keyvault secret download --vault-name edgereleasekv -n iotedge-pmc-client-auth-prod -f ./testcert_new.pfx
+
+            cmp --silent ./testcert.pfx ./testcert_new.pfx && echo '### SUCCESS: Files Are Identical! ###' || echo '### WARNING: Files Are Different! ###'
+
+
+            openssl pkcs12 -in ./testcert_new.pfx -out $CERT_FILE -nodes -passout pass:"" -passin pass:""
             cat $CERT_FILE
             echo "BEARWASHERE: <Done Downlooaind Cert>"
 
             #echo "Downloading PMC prod cert: $CERT_FILE"
-            #az keyvault secret download --vault-name iotedge-packages -n private-key-pem -f $CERT_FILE
             echo "Downloading PMC setting file: $SETTING_FILE"
             az keyvault secret download --vault-name iotedge-packages -n pmc-v4-settings -f $SETTING_FILE
 
@@ -133,19 +137,19 @@ stages:
             #docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli package upload packages/*.deb
             #docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli package upload packages/
 
-          rm -f "$(Build.ArtifactStagingDirectory)"/*.md
-          echo "BEARWASHERE"
-          ls $(Build.ArtifactStagingDirectory)
-          UPLOAD_OUTPUT=$(docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli package upload packages/)
-          PACKAGE_IDS=$(echo $UPLOAD_OUTPUT | jq '.[]."id"' | tr '\n' ' ' | tr -d '"')
-          ID_LIST=""; for ID in $PACKAGE_IDS; do ID_LIST=$ID','$ID_LIST; echo $ID_LIST; done; ID_LIST=${ID_LIST:0:-1}
+          # rm -f "$(Build.ArtifactStagingDirectory)"/*.md
+          # echo "BEARWASHERE"
+          # ls $(Build.ArtifactStagingDirectory)
+          # UPLOAD_OUTPUT=$(docker run --volume "$WDIR:/root/.config/pmc" --volume "$(Build.ArtifactStagingDirectory):/packages" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli package upload packages/)
+          # PACKAGE_IDS=$(echo $UPLOAD_OUTPUT | jq '.[]."id"' | tr '\n' ' ' | tr -d '"')
+          # ID_LIST=""; for ID in $PACKAGE_IDS; do ID_LIST=$ID','$ID_LIST; echo $ID_LIST; done; ID_LIST=${ID_LIST:0:-1}
           # BEARWASHERE -- This depends on each of the repo which can be find out with the URL
           # https://packages.microsoft.com/repos/microsoft-ubuntu-focal-prod/dists/
           REPO_NAME="microsoft-ubuntu-focal-prod-apt"
           # docker run --volume "$WDIR:/root/.config/pmc" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli repo package update --add-packages $ID_LIST "$REPO_NAME" "focal"
           # docker run --volume "$WDIR:/root/.config/pmc" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli repo publish "$REPO_NAME"
 
-          # docker run --volume "$WDIR:/root/.config/pmc" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli distro list --repository "$REPO_NAME"
+          docker run --volume "$WDIR:/root/.config/pmc" --rm --network="host" mcr.microsoft.com/pmc/pmc-cli distro list --repository "$REPO_NAME"
 
         name: SetupDockerPMC
         displayName: Setup Docker PMC
