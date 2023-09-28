@@ -64,7 +64,12 @@ stages:
               --encoding base64 \
               -f ./testcert.pfx
 
-            az keyvault secret download --vault-name edgereleasekv -n iotedge-pmc-client-auth-prod -f ./testcert_new.pfx
+            az keyvault secret download --vault-name edgereleasekv \
+              -n iotedge-pmc-client-auth-prod \
+              -o tsv \
+              --query 'value' \
+              --encoding base64 \ 
+              -f ./testcert_new.pfx
 
             cmp --silent ./testcert.pfx ./testcert_new.pfx && echo '### SUCCESS: Files Are Identical! ###' || echo '### WARNING: Files Are Different! ###'
 
