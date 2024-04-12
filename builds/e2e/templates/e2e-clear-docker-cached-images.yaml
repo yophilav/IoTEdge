@@ -3,7 +3,7 @@ steps:
   displayName: Docker login
   inputs:
     command: login
-    containerRegistry: iotedge-edgebuilds-acr
+    containerRegistry: $(service-connection.registry)
 
 - pwsh: |
     # We use a self-hosted agent for this job, so we need to clean up

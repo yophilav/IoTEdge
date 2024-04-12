@@ -10,7 +10,7 @@ namespace Microsoft.Azure.Devices.Edge.Hub.Service
         public const string InitializationVectorFileName = "EdgeHubIV";
         public const string TopicNameConversionSectionName = "mqttTopicNameConversion";
         public const string VersionInfoFileName = "versionInfo.json";
-        public const string WorkloadApiVersion = "2019-01-30";
+        public const string WorkloadApiVersion = "2020-07-07";
 
         public static class ConfigKey
         {
@@ -31,11 +31,11 @@ namespace Microsoft.Azure.Devices.Edge.Hub.Service
             public const string EdgeHubClientCertAuthEnabled = "ClientCertAuthEnabled";
             public const string SslProtocols = "SslProtocols";
             public const string StorageMaxTotalWalSize = "RocksDB_MaxTotalWalSize";
+            public const string StorageMaxManifestFileSize = "RocksDB_MaxManifestFileSize";
             public const string StorageMaxOpenFiles = "RocksDB_MaxOpenFiles";
             public const string StorageLogLevel = "Storage_LogLevel";
             public const string ExperimentalFeatures = "experimentalFeatures";
-            public const string NestedEdgeEnabled = "nestedEdgeEnabled";
-            public const string MqttBrokerEnabled = "mqttBrokerEnabled";
+            public const string NestedEdgeEnabled = "NestedEdgeEnabled";
         }
     }
 }

@@ -16,7 +16,7 @@ where
     IoS: super::IoSource,
 {
     BeginBackOff,
-    EndBackOff(tokio::time::Delay),
+    EndBackOff(std::pin::Pin<Box<tokio::time::Sleep>>),
     BeginConnecting,
     WaitingForIoToConnect(<IoS as super::IoSource>::Future),
     Framed {
@@ -73,6 +73,10 @@ where
     }
 }
 
+// NOTE: clippy is incorrectly marking this as a duplicated trait bound.
+// An upstream issue exists documenting this behavior:
+// https://github.com/rust-lang/rust-clippy/issues/9076
+#[allow(clippy::trait_duplication_in_bounds)]
 impl<IoS> Connect<IoS>
 where
     IoS: super::IoSource,
@@ -89,8 +93,7 @@ where
         client_id: &mut crate::proto::ClientId,
         keep_alive: std::time::Duration,
     ) -> std::task::Poll<Connected<'a, IoS>> {
-        use futures_core::Stream;
-        use futures_sink::Sink;
+        use futures_util::{Sink, Stream};
 
         let state = &mut self.state;
 
@@ -108,12 +111,14 @@ where
                         log::debug!("Backing off for {:?}", back_off);
                         self.current_back_off =
                             std::cmp::min(self.max_back_off, self.current_back_off * 2);
-                        *state = State::EndBackOff(tokio::time::delay_for(back_off));
+                        *state = State::EndBackOff(Box::pin(tokio::time::sleep(back_off)));
                     }
                 },
 
                 State::EndBackOff(back_off_timer) => {
-                    match std::pin::Pin::new(back_off_timer).poll(cx) {
+                    use futures_util::FutureExt;
+                    match back_off_timer.poll_unpin(cx) {
+                        // match std::pin::Pin::new(back_off_timer).poll(cx) {
                         std::task::Poll::Ready(()) => *state = State::BeginConnecting,
                         std::task::Poll::Pending => return std::task::Poll::Pending,
                     }
@@ -181,7 +186,7 @@ where
                     ..
                 } => match std::pin::Pin::new(framed).poll_flush(cx) {
                     std::task::Poll::Ready(Ok(())) => {
-                        *framed_state = FramedState::WaitingForConnAck
+                        *framed_state = FramedState::WaitingForConnAck;
                     }
                     std::task::Poll::Ready(Err(err)) => {
                         log::warn!("could not connect to server: {}", err);

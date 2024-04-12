@@ -16,12 +16,8 @@ namespace Microsoft.Azure.Devices.Edge.Test.Helpers
         protected async Task BeforeAllTestsAsync()
         {
             using var cts = new CancellationTokenSource(Context.Current.SetupTimeout);
-            Option<Registry> bootstrapRegistry = Option.Maybe(Context.Current.Registries.FirstOrDefault());
-            this.daemon = await OsPlatform.Current.CreateEdgeDaemonAsync(
-                Context.Current.InstallerPath,
-                Context.Current.EdgeAgentBootstrapImage,
-                bootstrapRegistry,
-                cts.Token);
+            this.daemon = await OsPlatform.Current.CreateEdgeDaemonAsync(Context.Current.PackagePath, cts.Token);
+            this.cli = this.daemon.GetCli();
         }
     }
 }

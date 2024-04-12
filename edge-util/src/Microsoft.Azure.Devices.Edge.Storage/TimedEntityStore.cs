@@ -129,5 +129,9 @@ namespace Microsoft.Azure.Devices.Edge.Storage
             Func<CancellationToken, Task> iterateWithTimeout = cts => this.underlyingKeyValueStore.IterateBatch(startKey, batchSize, perEntityCallback, cts);
             return iterateWithTimeout.TimeoutAfter(cancellationToken, this.timeout);
         }
+
+        public Task<ulong> Count() => this.underlyingKeyValueStore.Count();
+
+        public Task<ulong> GetCountFromStartKey(TK startKey) => this.underlyingKeyValueStore.GetCountFromStartKey(startKey);
     }
 }

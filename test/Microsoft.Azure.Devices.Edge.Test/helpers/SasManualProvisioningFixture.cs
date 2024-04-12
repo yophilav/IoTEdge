@@ -5,61 +5,66 @@ namespace Microsoft.Azure.Devices.Edge.Test.Helpers
     using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Azure.Devices.Edge.Test.Common;
-    using NUnit.Framework;
+    using Microsoft.Azure.Devices.Edge.Test.Common.Certs;
 
     public class SasManualProvisioningFixture : ManualProvisioningFixture
     {
         protected EdgeRuntime runtime;
-
-        public SasManualProvisioningFixture()
-            : base()
-        {
-        }
-
-        public SasManualProvisioningFixture(string connectionString, string eventHubEndpoint)
-            : base(connectionString, eventHubEndpoint)
-        {
-        }
+        protected EdgeDevice device;
 
         protected override Task BeforeTestTimerStarts() => this.SasProvisionEdgeAsync();
 
-        protected virtual async Task SasProvisionEdgeAsync()
+        protected virtual async Task SasProvisionEdgeAsync(bool withCerts = false)
         {
             using (var cts = new CancellationTokenSource(Context.Current.SetupTimeout))
             {
                 CancellationToken token = cts.Token;
                 DateTime startTime = DateTime.Now;
 
-                EdgeDevice device = await EdgeDevice.GetOrCreateIdentityAsync(
-                    DeviceId.Current.Generate(),
-                    this.iotHub,
+                this.device = await EdgeDevice.GetOrCreateIdentityAsync(
+                    Context.Current.DeviceId.GetOrElse(DeviceId.Current.Generate()),
+                    this.GetNestedEdgeConfig(this.IotHub),
+                    this.IotHub,
                     AuthenticationType.Sas,
                     null,
                     token);
 
-                Context.Current.DeleteList.TryAdd(device.Id, device);
+                Context.Current.DeleteList.TryAdd(this.device.Id, this.device);
 
                 this.runtime = new EdgeRuntime(
-                    device.Id,
+                    this.device.Id,
                     Context.Current.EdgeAgentImage,
                     Context.Current.EdgeHubImage,
-                    Context.Current.Proxy,
+                    Context.Current.EdgeProxy,
                     Context.Current.Registries,
                     Context.Current.OptimizeForPerformance,
-                    this.iotHub);
+                    this.IotHub);
 
-                await this.ConfigureDaemonAsync(
-                    config =>
-                    {
-                        config.SetDeviceConnectionString(device.ConnectionString);
-                        config.Update();
-                        return Task.FromResult((
-                            "with connection string for device '{Identity}'",
-                            new object[] { device.Id }));
-                    },
-                    device,
-                    startTime,
-                    token);
+                // This is a temporary solution see ticket: 9288683
+                if (!Context.Current.ISA95Tag)
+                {
+                    (var certs, this.ca) = await TestCertificates.GenerateEdgeCaCertsAsync(
+                        this.device.Id,
+                        this.daemon.GetCertificatesPath(),
+                        token);
+
+                    await this.ConfigureDaemonAsync(
+                        async config =>
+                        {
+                            config.SetCertificates(certs);
+                            config.SetManualSasProvisioning(
+                                this.IotHub.Hostname,
+                                Context.Current.ParentHostname,
+                                this.device.Id,
+                                this.device.SharedAccessKey);
+
+                            await config.UpdateAsync(token);
+                            return ("with connection string for device '{Identity}'", new object[] { this.device.Id });
+                        },
+                        this.device,
+                        startTime,
+                        token);
+                }
             }
         }
     }

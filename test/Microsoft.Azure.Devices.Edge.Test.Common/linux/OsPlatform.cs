@@ -15,37 +15,39 @@ namespace Microsoft.Azure.Devices.Edge.Test.Common.Linux
     {
         public async Task<string> CollectDaemonLogsAsync(DateTime testStartTime, string filePrefix, CancellationToken token)
         {
-            string args = $"-u iotedge -u docker --since \"{testStartTime:yyyy-MM-dd HH:mm:ss}\" --no-pager";
-            string[] output = await Process.RunAsync("journalctl", args, token);
+            string args = string.Join(
+                " ",
+                "-u aziot-keyd",
+                "-u aziot-certd",
+                "-u aziot-identityd",
+                "-u aziot-edged",
+                "-u docker",
+                $"--since \"{testStartTime:yyyy-MM-dd HH:mm:ss}\"",
+                "--no-pager");
+            string[] output = await Process.RunAsync("journalctl", args, token, logCommand: true, logOutput: false);
 
-            string daemonLog = $"{filePrefix}-iotedged.log";
+            string daemonLog = $"{filePrefix}-daemon.log";
             await File.WriteAllLinesAsync(daemonLog, output, token);
 
             return daemonLog;
         }
 
-        public async Task<IEdgeDaemon> CreateEdgeDaemonAsync(
-            Option<string> _,
-            Option<string> bootstrapAgentImage,
-            Option<Registry> bootstrapRegistry,
-            CancellationToken token) => await EdgeDaemon.CreateAsync(bootstrapAgentImage, bootstrapRegistry, token);
+        public async Task<IEdgeDaemon> CreateEdgeDaemonAsync(Option<string> packagesPath, CancellationToken token) =>
+            await EdgeDaemon.CreateAsync(packagesPath, token);
 
-        public async Task<IdCertificates> GenerateIdentityCertificatesAsync(string deviceId, string scriptPath, CancellationToken token)
+        public async Task<IdCertificates> GenerateIdentityCertificatesAsync(string uniqueId, string scriptPath, string destPath, CancellationToken token)
         {
-            var command = BuildCertCommand($"create_device_certificate '{deviceId}'", scriptPath);
+            var command = BuildCertCommand($"create_device_certificate '{uniqueId}'", scriptPath);
             await this.RunScriptAsync(("bash", command), token);
-            return new IdCertificates(deviceId, scriptPath);
+            return IdCertificates.CopyTo(uniqueId, scriptPath, destPath);
         }
 
-        public async Task<CaCertificates> GenerateCaCertificatesAsync(string deviceId, string scriptPath, CancellationToken token)
+        public async Task<CaCertificates> GenerateCaCertificatesAsync(string deviceId, string scriptPath, string destPath, CancellationToken token)
         {
             var command = BuildCertCommand($"create_edge_device_certificate '{deviceId}'", scriptPath);
             await this.RunScriptAsync(("bash", command), token);
-            return new CaCertificates(deviceId, scriptPath);
+            return CaCertificates.CopyTo(deviceId, scriptPath, destPath);
         }
-
-        public CaCertificates GetEdgeQuickstartCertificates() =>
-            this.GetEdgeQuickstartCertificates("/var/lib/iotedge/hsm");
 
         public void InstallCaCertificates(IEnumerable<X509Certificate2> certs, ITransportSettings transportSettings) =>
             this.InstallTrustedCertificates(certs, StoreName.Root);
@@ -61,5 +63,16 @@ namespace Microsoft.Azure.Devices.Edge.Test.Common.Linux
 
         static string BuildCertCommand(string command, string scriptPath) =>
             $"-c \"FORCE_NO_PROD_WARNING=true '{Path.Combine(scriptPath, "certGen.sh")}' {command}\"";
+
+        public void SetOwner(string path, string owner, string permissions)
+        {
+            var chown = System.Diagnostics.Process.Start("chown", $"{owner}:{owner} {path}");
+            chown.WaitForExit();
+            chown.Close();
+
+            var chmod = System.Diagnostics.Process.Start("chmod", $"{permissions} {path}");
+            chmod.WaitForExit();
+            chmod.Close();
+        }
     }
 }

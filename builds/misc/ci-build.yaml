@@ -1,0 +1,15 @@
+trigger:
+  batch: true
+  branches:
+    include:
+      - main
+      - release/*
+pr: none
+
+variables:
+  Codeql.Enabled: false
+  DisableDockerDetector: true
+
+stages:
+  - template: templates/build-images.yaml
+  - template: templates/build-packages.yaml

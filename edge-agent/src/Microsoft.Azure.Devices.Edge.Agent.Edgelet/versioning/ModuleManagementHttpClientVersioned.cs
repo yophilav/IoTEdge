@@ -5,6 +5,7 @@ namespace Microsoft.Azure.Devices.Edge.Agent.Edgelet.Versioning
     using System.Collections.Generic;
     using System.Globalization;
     using System.IO;
+    using System.Net;
     using System.Net.Http;
     using System.Net.Sockets;
     using System.Runtime.InteropServices;
@@ -25,6 +26,7 @@ namespace Microsoft.Azure.Devices.Edge.Agent.Edgelet.Versioning
         const string LogsUrlTailParameter = "tail";
         const string LogsUrlSinceParameter = "since";
         const string LogsUrlUntilParameter = "until";
+        const string LogsIncludeTimestampParameter = "timestamps";
 
         static readonly TimeSpan DefaultOperationTimeout = TimeSpan.FromMinutes(5);
 
@@ -49,6 +51,11 @@ namespace Microsoft.Azure.Devices.Edge.Agent.Edgelet.Versioning
         protected Uri ManagementUri { get; }
 
         protected ApiVersion Version { get; }
+
+        protected HttpClient GetHttpClient()
+        {
+            return HttpClientHelper.GetHttpClient(this.ManagementUri, this.operationTimeout);
+        }
 
         public abstract Task<Identity> CreateIdentityAsync(string name, string managedBy);
 
@@ -84,25 +91,44 @@ namespace Microsoft.Azure.Devices.Edge.Agent.Edgelet.Versioning
 
         public abstract Task<Stream> GetSupportBundle(Option<string> since, Option<string> until, Option<string> iothubHostname, Option<bool> edgeRuntimeOnly, CancellationToken token);
 
-        public virtual async Task<Stream> GetModuleLogs(string module, bool follow, Option<int> tail, Option<string> since, Option<string> until, CancellationToken cancellationToken)
+        public virtual async Task<Stream> GetModuleLogs(string module, bool follow, Option<int> tail, Option<string> since, Option<string> until, Option<bool> includeTimestamp, CancellationToken cancellationToken)
         {
-            using (HttpClient httpClient = HttpClientHelper.GetHttpClient(this.ManagementUri))
+            using (HttpClient httpClient = this.GetHttpClient())
             {
                 string baseUrl = HttpClientHelper.GetBaseUrl(this.ManagementUri).TrimEnd('/');
                 var logsUrl = new StringBuilder();
                 logsUrl.AppendFormat(CultureInfo.InvariantCulture, LogsUrlTemplate, baseUrl, module, this.Version.Name, follow.ToString().ToLowerInvariant());
-                tail.ForEach(t => logsUrl.AppendFormat($"&{LogsUrlTailParameter}={t}"));
                 since.ForEach(s => logsUrl.AppendFormat($"&{LogsUrlSinceParameter}={Uri.EscapeUriString(s)}"));
                 until.ForEach(u => logsUrl.AppendFormat($"&{LogsUrlUntilParameter}={Uri.EscapeUriString(u)}"));
+                includeTimestamp.ForEach(b => logsUrl.AppendFormat($"&{LogsIncludeTimestampParameter}={b.ToString().ToLower()}"));
+
+                if (!(tail.HasValue && since.HasValue && until.HasValue))
+                {
+                    tail.ForEach(t => logsUrl.AppendFormat($"&{LogsUrlTailParameter}={t}"));
+                }
+
                 var logsUri = new Uri(logsUrl.ToString());
+
                 var httpRequest = new HttpRequestMessage(HttpMethod.Get, logsUri);
                 Stream stream = await this.Execute(
                     async () =>
                     {
                         HttpResponseMessage httpResponseMessage = await httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                        if (!httpResponseMessage.IsSuccessStatusCode)
+                        {
+                            switch (httpResponseMessage.StatusCode)
+                            {
+                                case HttpStatusCode.BadRequest:
+                                    throw new ArgumentException($"Request Returned Status Code {httpResponseMessage.StatusCode} with Message {await httpResponseMessage.Content.ReadAsStringAsync()}");
+                                default:
+                                    throw new EdgeletCommunicationException(await httpResponseMessage.Content.ReadAsStringAsync(), (int)httpResponseMessage.StatusCode);
+                            }
+                        }
+
                         return await httpResponseMessage.Content.ReadAsStreamAsync();
                     },
                     $"Get logs for {module}");
+
                 return stream;
             }
         }
@@ -126,8 +152,7 @@ namespace Microsoft.Azure.Devices.Edge.Agent.Edgelet.Versioning
                 T result = await ExecuteWithRetry(
                     func,
                     (r) => Events.RetryingOperation(operation, this.ManagementUri.ToString(), r),
-                    this.transientErrorDetectionStrategy)
-                    .TimeoutAfter(this.operationTimeout);
+                    this.transientErrorDetectionStrategy);
                 Events.SuccessfullyExecutedOperation(operation, this.ManagementUri.ToString());
                 return result;
             }

@@ -19,7 +19,7 @@ impl SignRequest {
     pub fn new(data: String) -> Self {
         SignRequest {
             key_id: DEFAULT_KEY_ID.into(),
-            algorithm: Algorithm::HMACSHA256,
+            algorithm: Algorithm::HmacSha256,
             data,
         }
     }
@@ -28,6 +28,7 @@ impl SignRequest {
         self.key_id = key_id;
     }
 
+    #[must_use]
     pub fn with_key_id(mut self, key_id: String) -> Self {
         self.key_id = key_id;
         self
@@ -41,6 +42,7 @@ impl SignRequest {
         self.algorithm = algorithm;
     }
 
+    #[must_use]
     pub fn with_algorithm(mut self, algorithm: Algorithm) -> Self {
         self.algorithm = algorithm;
         self
@@ -54,6 +56,7 @@ impl SignRequest {
         self.data = data;
     }
 
+    #[must_use]
     pub fn with_data(mut self, data: String) -> Self {
         self.data = data;
         self
@@ -66,7 +69,8 @@ impl SignRequest {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Algorithm {
-    HMACSHA256,
+    #[serde(rename = "HMACSHA256")]
+    HmacSha256,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -85,6 +89,7 @@ impl SignResponse {
         self.digest = digest;
     }
 
+    #[must_use]
     pub fn with_digest(mut self, digest: String) -> Self {
         self.digest = digest;
         self

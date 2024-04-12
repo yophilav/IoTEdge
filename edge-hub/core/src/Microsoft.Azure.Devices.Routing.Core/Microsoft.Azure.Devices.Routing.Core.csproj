@@ -18,9 +18,23 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Antlr4" Version="4.6.1-beta002" />
+    <!-- NOTE: If you change the version of Antlr4 here, you also have to change <FullAntlr4ToolLocation> below -->
+    <PackageReference Include="Antlr4" Version="4.6.6" />
+    <!--
+      We have a transitive dependency on System.Net.Http via Antlr4/4.6.6. Use an explicit
+      reference here to override the version and fix a vulnerability. See
+      https://github.com/advisories/GHSA-7jgj-8wvc-jh57.
+    -->
+    <PackageReference Include="System.Net.Http" Version="4.3.4" />
     <PackageReference Include="App.Metrics" Version="3.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="3.1.3" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="5.0.0" />
+    <!--
+      Microsoft.Extensions.Logging.Console/5.0.0 takes a transitive dependency on
+      System.Text.Encodings.Web. Use an explicit reference here to override the
+      version and fix a security vulnerability.
+      See https://github.com/dotnet/runtime/issues/49377#issuecomment-804930299.
+    -->
+    <PackageReference Include="System.Text.Encodings.Web" Version="5.0.1" />
     <PackageReference Include="System.Collections.Immutable" Version="1.5.0" />
     <PackageReference Include="System.Reflection.Extensions" Version="4.3.0" />
     <PackageReference Include="System.Reflection.TypeExtensions" Version="4.5.1" />
@@ -69,7 +83,7 @@
 
   <Target Name="Antlr4CodeGen" BeforeTargets="Antlr4Sources" Inputs="@(Antlr4Inputs)" Outputs="@(Antlr4Outputs)" Condition="'$(BuildingInsideVisualStudio)' != 'true' Or '$(OS)' != 'Windows_NT'">
     <PropertyGroup>
-      <FullAntlr4ToolLocation>$(NuGetPackageRoot)antlr4.codegenerator/4.6.1-beta002/tools/antlr4-csharp-4.6.1-SNAPSHOT-complete.jar</FullAntlr4ToolLocation>
+      <FullAntlr4ToolLocation>$(NuGetPackageRoot)antlr4.codegenerator/4.6.6/tools/antlr4-csharp-4.6.6-complete.jar</FullAntlr4ToolLocation>
     </PropertyGroup>
     <Exec Command="$(JavaRuntime) -version" EchoOff="true" />
     <MakeDir Directories="grammar\generated" />

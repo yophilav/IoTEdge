@@ -6,7 +6,7 @@ As an example, the API proxy module enables an IoT Edge device in a bottom layer
 
 ## Concept
 
-The API Proxy module is an [IoT Edge module](https://docs.microsoft.com/en-us/azure/iot-edge/iot-edge-modules) that leverages a [nginx](http://nginx.org/) reverse proxy to route data through network layers.
+The API Proxy module is an [IoT Edge module](https://docs.microsoft.com/azure/iot-edge/iot-edge-modules) that leverages a [nginx](http://nginx.org/) reverse proxy to route data through network layers.
 The diagram below illustrates this approach in the case of an IoT Edge device in a bottom layer that pulls container images from a container registry in the Cloud:
 
 ![API proxy module architecture](images/concept.png)
@@ -55,8 +55,14 @@ The configuration of the proxy embedded in the module defines which proxy rules 
 The configuration of the proxy is done via the following complementing mechanisms:
 
 1. A default configuration file is embedded in the module
-2. A new configuration can be passed down to the module from the cloud via its [module twin](https://docs.microsoft.com/en-us/azure/iot-hub/iot-hub-devguide-module-twins)
+2. A new configuration can be passed down to the module from the cloud via its [module twin](https://docs.microsoft.com/azure/iot-hub/iot-hub-devguide-module-twins)
 3. Environment variables can be passed down at deployment time to turn configuration settings on or off
+
+Variables in the proxy configuration are identified as the following:${variable_name}
+Variables are replace according to the following rules:
+1. Default is 0 unless that variable has a default value (see below for the list)
+2. Value can be changed by passing an environment variable with the same name at deployment
+3. (2) works only if that variable is not in the list of hardcode variables (see below for the list). Those variables cannot be changed through environment variables.
 
 ### Understand the use of environment variables to edit a proxy configuration
 
@@ -64,10 +70,7 @@ Environment variables provide an easy way to turn settings on or off depending o
 
 #### With the default proxy configuration
 
-To edit the default proxy configuration with pre-defined settings, you need to:
-
-1. Declare the environment variables, e.g. settings, that you want to edit in the `PROXY_CONFIG_ENV_VAR_LIST` environment variable.
-2. Set values to these environment variables. For instance, set the `NGINX_HAS_BLOB_MODULE` to true to upload blobs to the cloud through the API Proxy module.
+To edit the default proxy configuration with pre-defined settings, you need to set values to these environment variables. For instance, set the `NGINX_HAS_BLOB_MODULE` to true to upload blobs to the cloud through the API Proxy module.
 
 Note that environment variables can themselves be used to define the value of another environment variable (max 1 level of copy). This is makes the templating of the API proxy configuration easier. For instance:
 
@@ -93,31 +96,33 @@ To write your own proxy configuration, you can also use environment variables to
 ```
 
 When the API Proxy module parses a proxy configuration, it goes through the following 2 steps:
+1. All variables contained in the config are modified in that order:
+    1. If user passes a custom value through environment variable, that value is used.
+    2. If not environment variable is match the config variable, then API search if there is a default value to assign
+    3. If there is no default value, the config variable is assigned "0"
 
-1. All environment variables contained in PROXY_CONFIG_ENV_VAR_LIST are replaced by their value using substitution
-2. Everything that is between #if_tag 0 and #endif_tag 0 or between  #if_tag !1 and #endif_tag !1 is replaced.
+2. Then everything that is between #if_tag 0 and #endif_tag 0 or between  #if_tag !1 and #endif_tag !1 is replaced.
 
-The parsed configuration is then provided to the nginx reverse proxy.
+3. The parsed configuration is then provided to the nginx reverse proxy.
 
 ### Use pre-defined environment variables to turn settings on or off
 
 For easiness of use, the API proxy module comes with a default configuration that meets most frequent scenarios out-of-the-box and that is modular. That configuration is controlled through environment variables of the module.
 
-First, list all the environment variables that you want to update in the `PROXY_CONFIG_ENV_VAR_LIST`. This step prevents from modifying configuration settings by mistake:
-
-| Environment variable  | comments |
+| Config variable  | comments |
 | ------------- |  ------------- |
-| PROXY_CONFIG_ENV_VAR_LIST | List all the variable to be replaced. By default it contains: NGINX_DEFAULT_PORT,BLOB_UPLOAD_ROUTE_ADDRESS,DOCKER_REQUEST_ROUTE_ADDRESS,IOTEDGE_PARENTHOSTNAME, IOTEDGE_PARENTAPIPROXYNAME  |
-
-Next, set each environment variable's value by listing them directly.
-
-| Environment variable  | comments |
-| ------------- |  ------------- |
-| NGINX_DEFAULT_PORT  | Changes the port Nginx listens on. If you update this environment variable, make sure the port you select is also exposed in the module dockerfile and the port binding. Default is 443.  |
+| NGINX_DEFAULT_PORT  | Changes the port Nginx listens on. If you update this environment variable, make sure the port you select is also exposed in the module dockerfile and the port binding. Default is 8000.  |
+| NGINX_DEFAULT_TLS | Changes the ssl protocols nginx support. See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_protocols for more details. Default is TLSv1.2 |
+| NGINX_DEFAULT_CIPHERS | Changes the ciphers nginx support. See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_ciphers for more details. |
 | DOCKER_REQUEST_ROUTE_ADDRESS | Address to route docker requests. By default it points to the parent.  |
 | BLOB_UPLOAD_ROUTE_ADDRESS| Address to route blob registry requests. By default it points to the parent. |
 | IOTEDGE_PARENTHOSTNAME | Read only variable. Do not assign, its value is automatically assigned to Parent hostname when container starts |
-| IOTEDGE_PARENTAPIPROXYNAME | Set the name of the parent api proxy module, as specified in azure portal. This is used for certificate authentication. When omitted, the name of the parent is defaulted to the child api proxy name. | 
+
+Some variables are also usable in the configuration but not editable:
+| Variables  | comments |
+| ------------- |  ------------- |
+| TOKEN_VALIDITY_MINUTES | How long tokens are cached. Reserved value  |
+| TOKEN_SERVER_PORT | Port on which the token server is listening. Reserved value  |
 
 ### Update the proxy configuration dynamically
 
@@ -202,10 +207,68 @@ These settings are set by default when deploying from the [Azure Marketplace](ht
 
 Lastly, all the module image URIs in **any lower layer** should use the domain name `$upstream` followed by the API Proxy module port number such as `$upstream:8000/azureiotedge-api-proxy:1.0` 
 
+$upstream is supported in several places:
+- In the image name in portal and in the config.yaml
+- In the registy address in portal and in the config.yaml
+- In direct method, see below.
+
+### Boolean expression parsing
+
+API proxy template file supports parsing of nested boolean expression.
+For example:
+```
+#if_tag boolean_expression[&(!(${ENV_VAR1}),${ENV_VAR2})]
+//Hello
+#endif_tag boolean_expression[&(!(${ENV_VAR1}),${ENV_VAR2}) 
+```
+
+Result for:
+
+ENV_VAR1 defined, ENV_VAR2 not defined:
+
+    &(!(1),0) => &(0,0) => 0   => //Hello does not appear in the generated config
+
+ENV_VAR1 not defined, ENV_VAR2 not defined:
+
+    &(!(0),0) => &(1,0) => 0   => //Hello does not appear in the generated config
+
+ENV_VAR1 defined, ENV_VAR2 defined:
+
+    &(!(1),1) => &(0,1) => 0   => //Hello does not appear in the generated config
+
+ENV_VAR1 not defined, ENV_VAR2 defined:
+
+    &(!(0),1) => &(1,1) => 1   => //Hello appears in the generated config
+Another example:
+
+```
+#if_tag boolean_expression[|(!(${ENV_VAR1}),${ENV_VAR2})]
+//Hello
+#endif_tag boolean_expression[|(!(${ENV_VAR1}),${ENV_VAR2}) 
+```
+
+Result for:
+
+ENV_VAR1 defined, ENV_VAR2 not defined:
+
+    |(!(1),0) => |(0,0) => 0   => //Hello does not appear in the generated config
+
+ENV_VAR1 not defined, ENV_VAR2 not defined:
+
+    |(!(0),0) => |(1,0) => 1   => //Hello appears in the generated config
+
+ENV_VAR1 defined, ENV_VAR2 defined:
+
+    |(!(1),1) => |(0,1) => 1   => //Hello appears in the generated config
+
+ENV_VAR1 not defined, ENV_VAR2 defined:
+
+    |(!(0),1) => |(1,1) => 1   => //Hello appears in the generated config
+
 ### Upload blob
 
-This section describes how to use the [blob storage module](https://docs.microsoft.com/en-us/azure/iot-edge/how-to-deploy-blob) to [upload support bundle](https://github.com/Azure/iotedge/blob/master/doc/built-in-logs-pull.md). 
-It assumes that the blob storage module has already been deployed. Please follow this [link](https://docs.microsoft.com/en-us/azure/iot-edge/how-to-deploy-blob) for detail on how to deploy it. 
+This section describes how to use the [blob storage module](https://docs.microsoft.com/azure/iot-edge/how-to-store-data-blob) to [upload support bundle](https://github.com/Azure/iotedge/blob/main/doc/built-in-logs-pull.md). 
+It assumes that the blob storage module has already been deployed. Please follow this [link](https://docs.microsoft.com/azure/iot-edge/how-to-deploy-blob) for detail on how to deploy it. 
 
 >If you want to upload support bundle, currently, the only supported configuration is when the blob storage module is at the top level. To be able to upload a support bundle, a blob container needs to be created and as of now that is only possible when the blob storage module is at the top level.
 
@@ -263,9 +326,9 @@ The configuration of the API Proxy module at **any lower layer** for this scenar
 These settings are set by default when deploying from the [Azure Marketplace](http://aka.ms/iot-edge-marketplace).
 
 To upload the support bundle and/or log file to the blob module located at the root:
-1. First create a blob container, you can use azure storage explorer for that or the rest APIs (the process is described [here](https://docs.microsoft.com/en-us/azure/iot-edge/how-to-store-data-blob))
+1. First create a blob container, you can use azure storage explorer for that or the rest APIs (the process is described [here](https://docs.microsoft.com/azure/iot-edge/how-to-store-data-blob))
 
-2. follow the process described at this [link](https://github.com/Azure/iotedge/blob/master/doc/built-in-logs-pull.md) to request a log/bundle upload, but replace the address of the blob storage module by `$upstream`.
+2. follow the process described at this [link](https://github.com/Azure/iotedge/blob/main/doc/built-in-logs-pull.md) to request a log/bundle upload, but replace the address of the blob storage module by `$upstream`.
 For example:  
 ***UploadSupportBundle***
 ```json

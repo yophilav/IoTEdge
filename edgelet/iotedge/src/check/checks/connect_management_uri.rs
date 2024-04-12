@@ -1,36 +1,37 @@
 use std::borrow::Cow;
 use std::ffi::{OsStr, OsString};
 
-use failure::{self, Context, ResultExt};
+use anyhow::{anyhow, Context};
 
-use edgelet_core::{self, RuntimeSettings, UrlExt};
+use edgelet_core::{self, UrlExt};
+use edgelet_settings::RuntimeSettings;
 
-use crate::check::{checker::Checker, Check, CheckResult};
+use crate::check::{Check, CheckResult, Checker, CheckerMeta};
 
-#[derive(Default, serde_derive::Serialize)]
+#[derive(Default, serde::Serialize)]
 pub(crate) struct ConnectManagementUri {
     connect_management_uri: Option<String>,
     listen_management_uri: Option<String>,
 }
 
+#[async_trait::async_trait]
 impl Checker for ConnectManagementUri {
-    fn id(&self) -> &'static str {
-        "connect-management-uri"
+    fn meta(&self) -> CheckerMeta {
+        CheckerMeta {
+            id: "connect-management-uri",
+            description: "configuration has correct URIs for daemon mgmt endpoint",
+        }
     }
-    fn description(&self) -> &'static str {
-        "config.yaml has correct URIs for daemon mgmt endpoint"
-    }
-    fn execute(&mut self, check: &mut Check, _: &mut tokio::runtime::Runtime) -> CheckResult {
+
+    async fn execute(&mut self, check: &mut Check) -> CheckResult {
         self.inner_execute(check)
+            .await
             .unwrap_or_else(CheckResult::Failed)
-    }
-    fn get_json(&self) -> serde_json::Value {
-        serde_json::to_value(self).unwrap()
     }
 }
 
 impl ConnectManagementUri {
-    fn inner_execute(&mut self, check: &mut Check) -> Result<CheckResult, failure::Error> {
+    async fn inner_execute(&mut self, check: &mut Check) -> anyhow::Result<CheckResult> {
         let settings = if let Some(settings) = &check.settings {
             settings
         } else {
@@ -47,7 +48,7 @@ impl ConnectManagementUri {
             .diagnostics_image_name
             .starts_with("/azureiotedge-diagnostics:")
         {
-            settings.parent_hostname().map_or_else(
+            check.parent_hostname.as_ref().map_or_else(
                 || "mcr.microsoft.com".to_string() + &check.diagnostics_image_name,
                 |upstream_hostname| upstream_hostname.to_string() + &check.diagnostics_image_name,
             )
@@ -74,36 +75,28 @@ impl ConnectManagementUri {
         match (connect_management_uri.scheme(), listen_management_uri.scheme()) {
         ("http", "http") => (),
 
-        ("unix", "unix") | ("unix", "fd") => {
+        ("unix", "unix" | "fd") => {
             args.push(Cow::Borrowed(OsStr::new("-v")));
 
             let socket_path =
                 connect_management_uri.to_uds_file_path()
                 .context("Could not parse connect.management_uri: does not represent a valid file path")?;
 
-            // On Windows we mount the parent folder because we can't mount the socket files directly
-            #[cfg(windows)]
-            let socket_path =
-                socket_path.parent()
-                .ok_or_else(|| Context::new("Could not parse connect.management_uri: does not have a parent directory"))?;
-
             let socket_path =
                 socket_path.to_str()
-                .ok_or_else(|| Context::new("Could not parse connect.management_uri: file path is not valid utf-8"))?;
+                .ok_or_else(|| anyhow!("Could not parse connect.management_uri: file path is not valid utf-8"))?;
 
             args.push(Cow::Owned(format!("{}:{}", socket_path, socket_path).into()));
         },
 
-        (scheme1, scheme2) if scheme1 != scheme2 => return Err(Context::new(
-            format!(
-                "config.yaml has invalid combination of schemes for connect.management_uri ({:?}) and listen.management_uri ({:?})",
+        (scheme1, scheme2) if scheme1 != scheme2 => return Err(anyhow!(
+                "configuration has invalid combination of schemes for connect.management_uri ({:?}) and listen.management_uri ({:?})",
                 scheme1, scheme2,
-            ))
-            .into()),
+            )),
 
-        (scheme, _) => return Err(Context::new(
-            format!("Could not parse connect.management_uri: scheme {} is invalid", scheme),
-        ).into()),
+        (scheme, _) => return Err(anyhow!(
+            "Could not parse connect.management_uri: scheme {} is invalid", scheme,
+        )),
     }
 
         args.extend(vec![
@@ -115,10 +108,10 @@ impl ConnectManagementUri {
             Cow::Owned(OsString::from(connect_management_uri.to_string())),
         ]);
 
-        match super::docker(docker_host_arg, args) {
+        match super::docker(docker_host_arg, args).await {
             Ok(_) => Ok(CheckResult::Ok),
-            Err((Some(stderr), err)) => Err(err.context(stderr).into()),
-            Err((None, err)) => Err(err.context("Could not spawn docker process").into()),
+            Err((Some(stderr), err)) => Err(err.context(stderr)),
+            Err((None, err)) => Err(err.context("Could not spawn docker process")),
         }
     }
 }

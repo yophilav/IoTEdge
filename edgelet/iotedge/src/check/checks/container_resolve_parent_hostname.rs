@@ -1,38 +1,40 @@
 use std::{net::IpAddr, str::FromStr};
 
-use crate::check::{checker::Checker, Check, CheckResult};
-use edgelet_core::RuntimeSettings;
-use failure::ResultExt;
+use anyhow::Context;
 
-#[derive(Default, serde_derive::Serialize)]
+use edgelet_settings::RuntimeSettings;
+
+use crate::check::{Check, CheckResult, Checker, CheckerMeta};
+
+#[derive(Default, serde::Serialize)]
 pub(crate) struct ContainerResolveParentHostname {}
 
+#[async_trait::async_trait]
 impl Checker for ContainerResolveParentHostname {
-    fn id(&self) -> &'static str {
-        "container-resolve-parent-hostname"
+    fn meta(&self) -> CheckerMeta {
+        CheckerMeta {
+            id: "container-resolve-parent-hostname",
+            description: "parent hostname is resolvable from inside container",
+        }
     }
-    fn description(&self) -> &'static str {
-        "config.yaml parent hostname is resolvable from inside container"
-    }
-    fn execute(&mut self, check: &mut Check, _: &mut tokio::runtime::Runtime) -> CheckResult {
+
+    async fn execute(&mut self, check: &mut Check) -> CheckResult {
         self.inner_execute(check)
+            .await
             .unwrap_or_else(CheckResult::Failed)
-    }
-    fn get_json(&self) -> serde_json::Value {
-        serde_json::to_value(self).unwrap()
     }
 }
 
 impl ContainerResolveParentHostname {
     #[allow(clippy::unused_self)]
-    fn inner_execute(&mut self, check: &mut Check) -> Result<CheckResult, failure::Error> {
+    async fn inner_execute(&mut self, check: &mut Check) -> anyhow::Result<CheckResult> {
         let settings = if let Some(settings) = &check.settings {
             settings
         } else {
             return Ok(CheckResult::Skipped);
         };
 
-        let parent_hostname = if let Some(hub_hostname) = settings.parent_hostname() {
+        let parent_hostname = if let Some(hub_hostname) = check.parent_hostname.as_ref() {
             hub_hostname.to_string()
         } else {
             return Ok(CheckResult::Ignored);
@@ -47,7 +49,7 @@ impl ContainerResolveParentHostname {
             .diagnostics_image_name
             .starts_with("/azureiotedge-diagnostics:")
         {
-            settings.parent_hostname().map_or_else(
+            check.parent_hostname.as_ref().map_or_else(
                 || "mcr.microsoft.com".to_string() + &check.diagnostics_image_name,
                 |upstream_hostname| upstream_hostname.to_string() + &check.diagnostics_image_name,
             )
@@ -73,7 +75,7 @@ impl ContainerResolveParentHostname {
             .for_each(|extra_hosts| {
                 extra_hosts
                     .iter()
-                    .for_each(|host| args.push(format!("--add-host={}", host)))
+                    .for_each(|host| args.push(format!("--add-host={}", host)));
             });
 
         args.extend(vec![
@@ -86,6 +88,7 @@ impl ContainerResolveParentHostname {
         ]);
 
         super::docker(docker_host_arg, args)
+            .await
             .map_err(|(_, err)| err)
             .context(format!(
                 "Failed to resolve parent hostname {}",

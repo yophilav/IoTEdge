@@ -1,40 +1,33 @@
 // Copyright (c) Microsoft. All rights reserved.
 
-use std::io::{self, Cursor, Read, Write};
-
-use futures::{future, task, Future, Poll};
-use hyper::client::connect::{Connect, Connected, Destination};
-use serde::Serialize;
-use tokio::io::{AsyncRead, AsyncWrite};
+use std::io::{self, Read, Write};
+use std::pin::Pin;
+use std::task::{Context, Poll, Waker};
 
 pub struct StaticStream {
     wrote: bool,
-    body: Cursor<Vec<u8>>,
+    bytes: io::Cursor<Vec<u8>>,
+    waker: Option<Waker>,
 }
 
 impl StaticStream {
-    pub fn new(body: Vec<u8>) -> Self {
-        StaticStream {
+    pub fn new(bytes: Vec<u8>) -> Self {
+        Self {
             wrote: false,
-            body: Cursor::new(body),
+            bytes: io::Cursor::new(bytes),
+            waker: None,
         }
     }
 }
 
 impl Read for StaticStream {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        if self.wrote {
-            self.body.read(buf)
-        } else {
-            Err(io::ErrorKind::WouldBlock.into())
-        }
+        self.bytes.read(buf)
     }
 }
 
 impl Write for StaticStream {
-    fn write<'a>(&mut self, buf: &'a [u8]) -> io::Result<usize> {
-        self.wrote = true;
-        task::current().notify();
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         Ok(buf.len())
     }
 
@@ -43,21 +36,61 @@ impl Write for StaticStream {
     }
 }
 
-impl AsyncRead for StaticStream {}
-
-impl AsyncWrite for StaticStream {
-    fn shutdown(&mut self) -> Poll<(), io::Error> {
-        Ok(().into())
+impl tokio::io::AsyncRead for StaticStream {
+    fn poll_read(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &mut tokio::io::ReadBuf<'_>,
+    ) -> Poll<io::Result<()>> {
+        let this = self.get_mut();
+        if this.wrote {
+            let written = this.read(buf.initialize_unfilled())?;
+            buf.advance(written);
+            Poll::Ready(Ok(()))
+        } else {
+            this.waker = Some(cx.waker().clone());
+            Poll::Pending
+        }
     }
 }
 
+impl tokio::io::AsyncWrite for StaticStream {
+    fn poll_write(
+        self: Pin<&mut Self>,
+        _cx: &mut Context<'_>,
+        buf: &[u8],
+    ) -> Poll<io::Result<usize>> {
+        let this = self.get_mut();
+        this.wrote = true;
+        if let Some(waker) = this.waker.take() {
+            waker.wake();
+        }
+        Poll::Ready(this.write(buf))
+    }
+
+    fn poll_flush(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+        Poll::Ready(self.get_mut().flush())
+    }
+
+    fn poll_shutdown(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+        Poll::Ready(Ok(()))
+    }
+}
+
+impl hyper::client::connect::Connection for StaticStream {
+    fn connected(&self) -> hyper::client::connect::Connected {
+        hyper::client::connect::Connected::new()
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct JsonConnector {
     body: Vec<u8>,
 }
 
 impl JsonConnector {
-    pub fn new<T: Serialize>(body: &T) -> JsonConnector {
-        let body = serde_json::to_string(body).unwrap();
+    #[must_use]
+    pub fn ok(body: &str) -> Self {
         let body = format!(
             "HTTP/1.1 200 OK\r\n\
              Content-Type: application/json; charset=utf-8\r\n\
@@ -71,17 +104,34 @@ impl JsonConnector {
 
         JsonConnector { body }
     }
+
+    #[must_use]
+    pub fn not_found(body: &str) -> Self {
+        let body = format!(
+            "HTTP/1.1 404 Not Found\r\n\
+             Content-Type: application/json; charset=utf-8\r\n\
+             Content-Length: {}\r\n\
+             \r\n\
+             {}",
+            body.len(),
+            body,
+        )
+        .into();
+
+        JsonConnector { body }
+    }
 }
 
-impl Connect for JsonConnector {
-    type Transport = StaticStream;
-    type Error = io::Error;
-    type Future = Box<dyn Future<Item = (Self::Transport, Connected), Error = Self::Error> + Send>;
+impl hyper::service::Service<hyper::Uri> for JsonConnector {
+    type Response = StaticStream;
+    type Error = std::convert::Infallible;
+    type Future = std::future::Ready<Result<Self::Response, Self::Error>>;
 
-    fn connect(&self, _dst: Destination) -> Self::Future {
-        Box::new(future::ok((
-            StaticStream::new(self.body.clone()),
-            Connected::new(),
-        )))
+    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        Poll::Ready(Ok(()))
+    }
+
+    fn call(&mut self, _req: hyper::Uri) -> Self::Future {
+        std::future::ready(Ok(StaticStream::new(self.body.clone())))
     }
 }

@@ -2,13 +2,14 @@
 namespace Microsoft.Azure.Devices.Edge.Hub.Service
 {
     using System;
+    using System.Threading.Tasks;
     using Autofac;
     using Autofac.Extensions.DependencyInjection;
     using Microsoft.AspNetCore.Builder;
     using Microsoft.AspNetCore.Hosting;
     using Microsoft.AspNetCore.Mvc;
-    using Microsoft.Azure.Devices.Client;
     using Microsoft.Azure.Devices.Edge.Hub.Core;
+    using Microsoft.Azure.Devices.Edge.Hub.Http;
     using Microsoft.Azure.Devices.Edge.Hub.Http.Middleware;
     using Microsoft.Azure.Devices.Edge.Util;
     using Microsoft.Extensions.Configuration;
@@ -55,10 +56,31 @@ namespace Microsoft.Azure.Devices.Edge.Hub.Service
             });
 
             app.UseHttpsRedirection();
-            app.UseWebSockets();
+
+            /*
+             * The Java IoT SDK uses two libraries for connecting over WebSockets. Proton for AMQP
+             * and Paho for MQTT; respectively. Neither of these libraries can handle WebSocket pings
+             * correctly and they will cause the ModuleClient to get into a bad state. Both implementations
+             * expect some Application Data but Kestrel does not include this data. This is valid
+             * according to the WebSocket RFC.
+             *
+             * Normally, the IoT hub instance will send a series of protocol dependent requests which
+             * are echoed back to the server from the client. This acts as a keep alive and will stop
+             * the hub from disconnecting the client.
+             *
+             * When the ping request is sent from Kestrel the implementations do not know how to handle
+             * the ping and will stop echoing back the server keep alives. If the device does not send
+             * any telemetry before the default timeout of 4 minutes the IoT hub will disconnect the client.
+             *
+             */
+            app.UseWebSockets(new WebSocketOptions
+            {
+                KeepAliveInterval = TimeSpan.Zero
+            });
 
             var webSocketListenerRegistry = app.ApplicationServices.GetService(typeof(IWebSocketListenerRegistry)) as IWebSocketListenerRegistry;
-            app.UseWebSocketHandlingMiddleware(webSocketListenerRegistry);
+            var httpProxiedCertificateExtractor = app.ApplicationServices.GetService(typeof(Task<IHttpProxiedCertificateExtractor>)) as Task<IHttpProxiedCertificateExtractor>;
+            app.UseWebSocketHandlingMiddleware(webSocketListenerRegistry, httpProxiedCertificateExtractor);
 
             app.Use(
                 async (context, next) =>

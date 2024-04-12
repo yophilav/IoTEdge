@@ -1,42 +1,36 @@
-use failure::{self, Context, ResultExt};
 use std::time::Duration;
 
-use crate::check::{checker::Checker, Check, CheckResult};
-use edgelet_core::RuntimeSettings;
+use anyhow::Context;
 
-#[derive(Default, serde_derive::Serialize)]
+use crate::check::{Check, CheckResult, Checker, CheckerMeta};
+
+#[derive(Default, serde::Serialize)]
 pub(crate) struct ContainerLocalTime {
     expected_duration: Option<Duration>,
     actual_duration: Option<Duration>,
     diff: Option<u64>,
 }
 
+#[async_trait::async_trait]
 impl Checker for ContainerLocalTime {
-    fn id(&self) -> &'static str {
-        "container-local-time"
+    fn meta(&self) -> CheckerMeta {
+        CheckerMeta {
+            id: "container-local-time",
+            description: "container time is close to host time",
+        }
     }
-    fn description(&self) -> &'static str {
-        "container time is close to host time"
-    }
-    fn execute(&mut self, check: &mut Check, _: &mut tokio::runtime::Runtime) -> CheckResult {
+
+    async fn execute(&mut self, check: &mut Check) -> CheckResult {
         self.inner_execute(check)
+            .await
             .unwrap_or_else(CheckResult::Failed)
-    }
-    fn get_json(&self) -> serde_json::Value {
-        serde_json::to_value(self).unwrap()
     }
 }
 
 impl ContainerLocalTime {
-    fn inner_execute(&mut self, check: &mut Check) -> Result<CheckResult, failure::Error> {
+    async fn inner_execute(&mut self, check: &mut Check) -> anyhow::Result<CheckResult> {
         let docker_host_arg = if let Some(docker_host_arg) = &check.docker_host_arg {
             docker_host_arg
-        } else {
-            return Ok(CheckResult::Skipped);
-        };
-
-        let settings = if let Some(settings) = &check.settings {
-            settings
         } else {
             return Ok(CheckResult::Skipped);
         };
@@ -45,7 +39,7 @@ impl ContainerLocalTime {
             .diagnostics_image_name
             .starts_with("/azureiotedge-diagnostics:")
         {
-            settings.parent_hostname().map_or_else(
+            check.parent_hostname.as_ref().map_or_else(
                 || "mcr.microsoft.com".to_string() + &check.diagnostics_image_name,
                 |upstream_hostname| upstream_hostname.to_string() + &check.diagnostics_image_name,
             )
@@ -64,11 +58,12 @@ impl ContainerLocalTime {
                 "local-time",
             ],
         )
+        .await
         .map_err(|(_, err)| err)
         .context("Could not query local time inside container")?;
 
         let output = std::str::from_utf8(&output)
-            .map_err(failure::Error::from)
+            .map_err(anyhow::Error::from)
             .and_then(|output| output.trim_end().parse::<u64>().map_err(Into::into))
             .context("Could not parse container output")?;
 
@@ -85,7 +80,9 @@ impl ContainerLocalTime {
         self.diff = Some(diff.as_secs());
 
         if diff.as_secs() >= 10 {
-            return Err(Context::new("Detected time drift between host and container").into());
+            return Err(anyhow::anyhow!(
+                "Detected time drift between host and container",
+            ));
         }
 
         Ok(CheckResult::Ok)

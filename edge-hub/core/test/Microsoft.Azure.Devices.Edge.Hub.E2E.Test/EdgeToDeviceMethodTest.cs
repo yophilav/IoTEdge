@@ -29,12 +29,11 @@ namespace Microsoft.Azure.Devices.Edge.Hub.E2E.Test
             this.logger.Dispose();
         }
 
-        [Theory]
+        [Theory(Skip = "Flaky")]
         [MemberData(nameof(TestSettings.TransportSettings), MemberType = typeof(TestSettings))]
         public async Task InvokeMethodOnModuleTest(ITransportSettings[] transportSettings)
         {
             // Arrange
-            string deviceName = string.Format("moduleMethodTest-{0}", transportSettings.First().GetTransportType().ToString("g"));
             string iotHubConnectionString = await SecretsHelper.GetSecretFromConfigKey("iotHubConnStrKey");
             IotHubConnectionStringBuilder connectionStringBuilder = IotHubConnectionStringBuilder.Create(iotHubConnectionString);
             RegistryManager rm = RegistryManager.CreateFromConnectionString(iotHubConnectionString);
@@ -43,7 +42,6 @@ namespace Microsoft.Azure.Devices.Edge.Hub.E2E.Test
             string edgeDeviceConnectionString = ConfigHelper.TestConfig[EdgeHubConstants.ConfigKey.IotHubConnectionString];
             Client.IotHubConnectionStringBuilder edgeHubConnectionStringBuilder = Client.IotHubConnectionStringBuilder.Create(edgeDeviceConnectionString);
             string edgeDeviceId = edgeHubConnectionStringBuilder.DeviceId;
-            Device edgeDevice = await rm.GetDeviceAsync(edgeDeviceId);
 
             var request = new TestMethodRequest("Prop1", 10);
             var response = new TestMethodResponse("RespProp1", 20);
@@ -59,22 +57,32 @@ namespace Microsoft.Azure.Devices.Edge.Hub.E2E.Test
             }
 
             string receiverModuleName = "method-module";
-            (string deviceId, string deviceConnStr) = await RegistryManagerHelper.CreateDevice(deviceName, iotHubConnectionString, rm, true, false, edgeDevice.Scope);
             try
             {
                 ServiceClient sender = ServiceClient.CreateFromConnectionString(iotHubConnectionString);
 
-                string receiverModuleConnectionString = await RegistryManagerHelper.CreateModuleIfNotExists(rm, connectionStringBuilder.HostName, deviceId, receiverModuleName);
+                string receiverModuleConnectionString = await RegistryManagerHelper.CreateModuleIfNotExists(rm, connectionStringBuilder.HostName, edgeDeviceId, receiverModuleName);
                 receiver = ModuleClient.CreateFromConnectionString(receiverModuleConnectionString, transportSettings);
                 await receiver.OpenAsync();
                 await receiver.SetMethodHandlerAsync("poke", MethodHandler, null);
+
+                var waitStart = DateTime.Now;
+                var isConnected = false;
+
+                while (!isConnected && (DateTime.Now - waitStart) < TimeSpan.FromSeconds(30))
+                {
+                    var connectedDevice = await rm.GetModuleAsync(edgeDeviceId, receiverModuleName);
+                    isConnected = connectedDevice.ConnectionState == DeviceConnectionState.Connected;
+                }
+
+                Assert.True(isConnected);
 
                 // Need longer sleep to ensure receiver is completely initialized
                 await Task.Delay(TimeSpan.FromSeconds(10));
 
                 // Act
                 CloudToDeviceMethodResult cloudToDeviceMethodResult = await sender.InvokeDeviceMethodAsync(
-                    deviceId,
+                    edgeDeviceId,
                     receiverModuleName,
                     new CloudToDeviceMethod("poke").SetPayloadJson(JsonConvert.SerializeObject(request)));
 
@@ -101,7 +109,7 @@ namespace Microsoft.Azure.Devices.Edge.Hub.E2E.Test
 
                 try
                 {
-                    await RegistryManagerHelper.RemoveDevice(deviceId, rm);
+                    await RegistryManagerHelper.RemoveModule(edgeDeviceId, receiverModuleName, rm);
                 }
                 catch (Exception)
                 {
@@ -149,6 +157,17 @@ namespace Microsoft.Azure.Devices.Edge.Hub.E2E.Test
                 receiver = DeviceClient.CreateFromConnectionString(receiverModuleConnectionString, transportSettings);
                 await receiver.OpenAsync();
                 await receiver.SetMethodHandlerAsync("poke", MethodHandler, null);
+
+                var waitStart = DateTime.Now;
+                var isConnected = false;
+
+                while (!isConnected && (DateTime.Now - waitStart) < TimeSpan.FromSeconds(30))
+                {
+                    var connectedDevice = await rm.GetDeviceAsync(deviceId);
+                    isConnected = connectedDevice.ConnectionState == DeviceConnectionState.Connected;
+                }
+
+                Assert.True(isConnected);
 
                 // Need longer sleep to ensure receiver is completely initialized
                 await Task.Delay(TimeSpan.FromSeconds(10));

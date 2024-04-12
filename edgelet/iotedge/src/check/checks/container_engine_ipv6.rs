@@ -1,35 +1,34 @@
 use std::fs::File;
 
-use failure::{self, Context, Fail, ResultExt};
+use anyhow::Context;
 
-use edgelet_core::{self, MobyNetwork};
+use edgelet_settings::MobyNetwork;
 
-use crate::check::{checker::Checker, Check, CheckResult};
+use crate::check::{Check, CheckResult, Checker, CheckerMeta};
 
-#[derive(Default, serde_derive::Serialize)]
+#[derive(Default, serde::Serialize)]
 pub(crate) struct ContainerEngineIPv6 {
     expected_use_ipv6: Option<bool>,
     actual_use_ipv6: Option<bool>,
 }
 
+#[async_trait::async_trait]
 impl Checker for ContainerEngineIPv6 {
-    fn id(&self) -> &'static str {
-        "container-engine-ipv6"
+    fn meta(&self) -> CheckerMeta {
+        CheckerMeta {
+            id: "container-engine-ipv6",
+            description: "IPv6 network configuration",
+        }
     }
-    fn description(&self) -> &'static str {
-        "IPv6 network configuration"
-    }
-    fn execute(&mut self, check: &mut Check, _: &mut tokio::runtime::Runtime) -> CheckResult {
+
+    async fn execute(&mut self, check: &mut Check) -> CheckResult {
         self.inner_execute(check)
             .unwrap_or_else(CheckResult::Failed)
-    }
-    fn get_json(&self) -> serde_json::Value {
-        serde_json::to_value(self).unwrap()
     }
 }
 
 impl ContainerEngineIPv6 {
-    fn inner_execute(&mut self, check: &mut Check) -> Result<CheckResult, failure::Error> {
+    fn inner_execute(&mut self, check: &mut Check) -> anyhow::Result<CheckResult> {
         const MESSAGE: &str =
             "Container engine is not configured for IPv6 communication.\n\
              Please see https://aka.ms/iotedge-docker-ipv6 for a guide on how to enable IPv6 support.";
@@ -45,7 +44,7 @@ impl ContainerEngineIPv6 {
         self.expected_use_ipv6 = Some(is_edge_ipv6_configured);
 
         let daemon_config_file = File::open(&check.container_engine_config_path)
-            .with_context(|_| {
+            .with_context(|| {
                 format!(
                     "Could not open container engine config file {}",
                     check.container_engine_config_path.display(),
@@ -55,15 +54,15 @@ impl ContainerEngineIPv6 {
         let daemon_config_file = match daemon_config_file {
             Ok(daemon_config_file) => daemon_config_file,
             Err(err) => {
-                if is_edge_ipv6_configured {
-                    return Err(err.context(MESSAGE).into());
+                return if is_edge_ipv6_configured {
+                    Err(err.context(MESSAGE))
                 } else {
-                    return Ok(CheckResult::Ignored);
+                    Ok(CheckResult::Ignored)
                 }
             }
         };
         let daemon_config: DaemonConfig = serde_json::from_reader(daemon_config_file)
-            .with_context(|_| {
+            .with_context(|| {
                 format!(
                     "Could not parse container engine config file {}",
                     check.container_engine_config_path.display(),
@@ -72,16 +71,17 @@ impl ContainerEngineIPv6 {
             .context(MESSAGE)?;
         self.actual_use_ipv6 = daemon_config.ipv6;
 
-        match (daemon_config.ipv6.unwrap_or_default(), is_edge_ipv6_configured) {
-            (true, _) if cfg!(windows) => Err(Context::new("IPv6 container network configuration is not supported for the Windows operating system.").into()),
-            (true, _) => Ok(CheckResult::Ok),
-            (false, true) => Err(Context::new(MESSAGE).into()),
-            (false, false) => Ok(CheckResult::Ignored),
+        if daemon_config.ipv6.unwrap_or_default() {
+            Ok(CheckResult::Ok)
+        } else if is_edge_ipv6_configured {
+            Err(anyhow::anyhow!(MESSAGE))
+        } else {
+            Ok(CheckResult::Ignored)
         }
     }
 }
 
-#[derive(serde_derive::Deserialize)]
+#[derive(serde::Deserialize)]
 struct DaemonConfig {
     ipv6: Option<bool>,
 }

@@ -1,103 +1,79 @@
 // Copyright (c) Microsoft. All rights reserved.
 
 use std::fmt;
-use std::fmt::Display;
 
-use failure::{Backtrace, Context, Fail};
-
-#[derive(Debug)]
-pub struct Error {
-    inner: Context<ErrorKind>,
-}
-
-#[derive(Clone, Debug, Fail)]
-pub enum ErrorKind {
-    #[fail(display = "Invalid value for --host parameter")]
+#[derive(Clone, Debug, thiserror::Error)]
+pub enum Error {
+    #[error("Invalid value for --host parameter")]
     BadHostParameter,
 
-    #[fail(display = "Invalid value for --since parameter")]
+    #[error("Invalid value for --since parameter")]
     BadSinceParameter,
 
-    #[fail(display = "Invalid value for --tail parameter")]
+    #[error("Invalid value for --tail parameter")]
     BadTailParameter,
 
-    #[fail(display = "")]
+    #[error("")]
     Diagnostics,
 
-    #[fail(
-        display = "Error while fetching latest versions of edge components: {}",
-        _0
-    )]
+    #[error("Error while fetching latest versions of edge components: {0}")]
     FetchLatestVersions(FetchLatestVersionsReason),
 
-    #[fail(display = "Could not initialize tokio runtime")]
+    #[error("Command failed: {0}")]
+    Config(std::borrow::Cow<'static, str>),
+
+    #[error("Could not initialize tokio runtime")]
     InitializeTokio,
 
-    #[fail(display = "Missing --host parameter")]
+    #[error("Missing --host parameter")]
     MissingHostParameter,
 
-    #[fail(display = "A module runtime error occurred")]
+    #[error("A module runtime error occurred")]
     ModuleRuntime,
 
-    #[fail(display = "Could not generate support bundle")]
+    #[error("Could not generate support bundle")]
     SupportBundle,
 
-    #[fail(display = "Could not write to stdout")]
+    #[error("Could not write to stdout")]
     WriteToStdout,
 
-    #[fail(display = "Could not write to file")]
+    #[error("Could not write to file")]
     WriteToFile,
 
-    #[fail(display = "Unable to bundle iotedge check")]
+    #[error("Unable to bundle iotedge check")]
     BundleCheck,
 
-    #[fail(display = "Unable to call docker inspect")]
-    Docker,
-}
+    #[error("Unable to call docker: {0}")]
+    Docker(String),
 
-impl Fail for Error {
-    fn cause(&self) -> Option<&dyn Fail> {
-        self.inner.cause()
-    }
+    #[error("Error communicating with 'aziotctl' binary")]
+    Aziot,
 
-    fn backtrace(&self) -> Option<&Backtrace> {
-        self.inner.backtrace()
-    }
-}
+    #[error("Error running system command")]
+    System,
 
-impl Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        Display::fmt(&self.inner, f)
-    }
-}
+    #[error("Error running check: {0}")]
+    Check(String),
 
-impl From<ErrorKind> for Error {
-    fn from(kind: ErrorKind) -> Self {
-        Error {
-            inner: Context::new(kind),
-        }
-    }
-}
-
-impl From<Context<ErrorKind>> for Error {
-    fn from(inner: Context<ErrorKind>) -> Self {
-        Error { inner }
-    }
+    #[error("{0}")]
+    Misc(String),
 }
 
 #[derive(Clone, Copy, Debug)]
 pub enum FetchLatestVersionsReason {
+    RequestTimeout,
     CreateClient,
     GetResponse,
     InvalidOrMissingLocationHeader,
     ResponseStatusCode(hyper::StatusCode),
 }
 
-impl Display for FetchLatestVersionsReason {
+impl fmt::Display for FetchLatestVersionsReason {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             FetchLatestVersionsReason::CreateClient => write!(f, "could not create HTTP client"),
             FetchLatestVersionsReason::GetResponse => write!(f, "could not send HTTP request"),
+            FetchLatestVersionsReason::RequestTimeout => write!(f, "HTTP request timed out"),
             FetchLatestVersionsReason::InvalidOrMissingLocationHeader => write!(
                 f,
                 "redirect response has invalid or missing location header"

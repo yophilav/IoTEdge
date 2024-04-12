@@ -24,7 +24,7 @@ impl State {
         ),
         super::Error,
     > {
-        use futures_core::Stream;
+        use futures_util::Stream;
 
         let mut subscription_updates = vec![];
 
@@ -114,7 +114,10 @@ impl State {
                                     // Return an event for rejected subscription instead of retrying to send the subscription
                                     subscription_updates.push(
                                         super::SubscriptionUpdateEvent::RejectedByServer(
-                                            topic_filter,
+                                            crate::proto::SubscribeTo {
+                                                topic_filter,
+                                                qos: expected_qos,
+                                            },
                                         ),
                                     );
                                 }
@@ -432,6 +435,7 @@ impl State {
             }
         } else {
             // Re-create all pending (ie unacked) changes to the set of subscriptions
+            #[allow(clippy::needless_collect)]
             let unacked_packets: Vec<_> = self
                 .subscription_updates_waiting_to_be_acked
                 .iter()

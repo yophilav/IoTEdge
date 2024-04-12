@@ -5,7 +5,7 @@
 use std::convert::TryInto;
 
 use bytes::{Buf, BufMut};
-#[cfg(feature = "serde1")]
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 mod packet;
@@ -152,19 +152,10 @@ where
 /// These numbers are encoded with a variable-length scheme that uses the MSB of each byte as a continuation bit.
 ///
 /// Ref: 2.2.3 Remaining Length
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct RemainingLengthDecoder {
     result: usize,
     num_bytes_read: usize,
-}
-
-impl Default for RemainingLengthDecoder {
-    fn default() -> Self {
-        RemainingLengthDecoder {
-            result: 0,
-            num_bytes_read: 0,
-        }
-    }
 }
 
 impl tokio_util::codec::Decoder for RemainingLengthDecoder {
@@ -230,7 +221,7 @@ where
 
 /// A packet identifier. Two-byte unsigned integer that cannot be zero.
 #[derive(Clone, Copy, Debug, Eq, Ord, Hash, PartialEq, PartialOrd)]
-#[cfg_attr(feature = "serde1", derive(Deserialize, Serialize))]
+#[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
 pub struct PacketIdentifier(u16);
 
 impl PacketIdentifier {

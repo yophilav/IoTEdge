@@ -1,7 +1,7 @@
 use std::{convert::TryInto, time::Duration};
 
 use bytes::{Buf, BufMut};
-#[cfg(feature = "serde1")]
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use tokio_util::codec::Decoder;
 
@@ -179,7 +179,7 @@ impl PacketMeta for Connect {
         let client_id = super::Utf8StringDecoder::default()
             .decode(&mut src)?
             .ok_or(super::DecodeError::IncompletePacket)?;
-        let client_id = if client_id == "" {
+        let client_id = if client_id.is_empty() {
             if connect_flags & 0x02 == 0 {
                 return Err(super::DecodeError::ConnectZeroLengthIdWithExistingSession);
             }
@@ -290,7 +290,7 @@ impl PacketMeta for Connect {
             }
             match client_id {
                 super::ClientId::ServerGenerated | super::ClientId::IdWithCleanSession(_) => {
-                    connect_flags |= 0x02
+                    connect_flags |= 0x02;
                 }
                 super::ClientId::IdWithExistingSession(_) => (),
             }
@@ -485,13 +485,13 @@ impl PacketMeta for PubComp {
 
 /// 3.3 PUBLISH – Publish message
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg_attr(feature = "serde1", derive(Deserialize, Serialize))]
+#[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
 pub struct Publish {
     pub packet_identifier_dup_qos: PacketIdentifierDupQoS,
     pub retain: bool,
     pub topic_name: String,
-    #[cfg_attr(feature = "serde1", serde(serialize_with = "serialize_bytes"))]
-    #[cfg_attr(feature = "serde1", serde(deserialize_with = "deserialize_bytes"))]
+    #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_bytes"))]
+    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_bytes"))]
     pub payload: bytes::Bytes,
 }
 
@@ -552,11 +552,11 @@ impl PacketMeta for Publish {
             PacketIdentifierDupQoS::AtMostOnce => (),
             PacketIdentifierDupQoS::AtLeastOnce(packet_identifier, _)
             | PacketIdentifierDupQoS::ExactlyOnce(packet_identifier, _) => {
-                dst.put_packet_identifier_bytes(*packet_identifier)
+                dst.put_packet_identifier_bytes(*packet_identifier);
             }
         }
 
-        dst.put_slice_bytes(&payload);
+        dst.put_slice_bytes(payload);
 
         Ok(())
     }
@@ -855,7 +855,7 @@ impl PacketMeta for Unsubscribe {
 /// A combination of the packet identifier, dup flag and QoS that only allows valid combinations of these three properties.
 /// Used in [`Packet::Publish`]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[cfg_attr(feature = "serde1", derive(Deserialize, Serialize))]
+#[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
 pub enum PacketIdentifierDupQoS {
     AtMostOnce,
     AtLeastOnce(super::PacketIdentifier, bool),
@@ -873,7 +873,7 @@ pub struct SubscribeTo {
 ///
 /// Ref: 4.3 Quality of Service levels and protocol flows
 #[derive(Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
-#[cfg_attr(feature = "serde1", derive(Deserialize, Serialize))]
+#[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
 pub enum QoS {
     AtMostOnce,
     AtLeastOnce,
@@ -916,13 +916,13 @@ impl From<SubAckQos> for u8 {
 /// A message that can be published to the server
 //  but not yet assigned a packet identifier.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg_attr(feature = "serde1", derive(Deserialize, Serialize))]
+#[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
 pub struct Publication {
     pub topic_name: String,
     pub qos: crate::proto::QoS,
     pub retain: bool,
-    #[cfg_attr(feature = "serde1", serde(serialize_with = "serialize_bytes"))]
-    #[cfg_attr(feature = "serde1", serde(deserialize_with = "deserialize_bytes"))]
+    #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_bytes"))]
+    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_bytes"))]
     pub payload: bytes::Bytes,
 }
 
@@ -1030,11 +1030,10 @@ impl tokio_util::codec::Decoder for PacketCodec {
     }
 }
 
-impl tokio_util::codec::Encoder for PacketCodec {
-    type Item = Packet;
+impl tokio_util::codec::Encoder<Packet> for PacketCodec {
     type Error = super::EncodeError;
 
-    fn encode(&mut self, item: Self::Item, dst: &mut bytes::BytesMut) -> Result<(), Self::Error> {
+    fn encode(&mut self, item: Packet, dst: &mut bytes::BytesMut) -> Result<(), Self::Error> {
         dst.reserve(std::mem::size_of::<u8>() + 4 * std::mem::size_of::<u8>());
 
         match &item {
@@ -1093,7 +1092,7 @@ where
     Ok(())
 }
 
-#[cfg(feature = "serde1")]
+#[cfg(feature = "serde")]
 fn serialize_bytes<S>(bytes: &bytes::Bytes, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -1101,7 +1100,7 @@ where
     serializer.serialize_bytes(bytes)
 }
 
-#[cfg(feature = "serde1")]
+#[cfg(feature = "serde")]
 fn deserialize_bytes<'de, D>(deserializer: D) -> Result<bytes::Bytes, D::Error>
 where
     D: Deserializer<'de>,

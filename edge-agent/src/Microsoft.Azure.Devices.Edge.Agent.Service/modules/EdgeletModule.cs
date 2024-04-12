@@ -4,6 +4,7 @@ namespace Microsoft.Azure.Devices.Edge.Agent.Service.Modules
     using System;
     using System.Collections.Generic;
     using System.Net;
+    using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
     using Autofac;
@@ -11,9 +12,11 @@ namespace Microsoft.Azure.Devices.Edge.Agent.Service.Modules
     using Microsoft.Azure.Devices.Edge.Agent.Core;
     using Microsoft.Azure.Devices.Edge.Agent.Core.ConfigSources;
     using Microsoft.Azure.Devices.Edge.Agent.Core.DeviceManager;
+    using Microsoft.Azure.Devices.Edge.Agent.Core.Planner;
     using Microsoft.Azure.Devices.Edge.Agent.Core.Serde;
     using Microsoft.Azure.Devices.Edge.Agent.Docker;
     using Microsoft.Azure.Devices.Edge.Agent.Edgelet;
+    using Microsoft.Azure.Devices.Edge.Agent.Edgelet.CommandFactories;
     using Microsoft.Azure.Devices.Edge.Agent.Edgelet.Docker;
     using Microsoft.Azure.Devices.Edge.Agent.IoTHub;
     using Microsoft.Azure.Devices.Edge.Agent.IoTHub.SdkClient;
@@ -44,6 +47,10 @@ namespace Microsoft.Azure.Devices.Edge.Agent.Service.Modules
         readonly TimeSpan performanceMetricsUpdateFrequency;
         readonly bool useServerHeartbeat;
         readonly string backupConfigFilePath;
+        readonly bool disableDeviceAnalyticsTelemetry;
+        readonly ModuleUpdateMode moduleUpdateMode;
+        readonly TimeSpan edgeletTimeout;
+        readonly bool enableOrphanedIdentityCleanup;
 
         public EdgeletModule(
             string iotHubHostname,
@@ -59,7 +66,11 @@ namespace Microsoft.Azure.Devices.Edge.Agent.Service.Modules
             TimeSpan idleTimeout,
             TimeSpan performanceMetricsUpdateFrequency,
             bool useServerHeartbeat,
-            string backupConfigFilePath)
+            string backupConfigFilePath,
+            bool disableDeviceAnalyticsTelemetry,
+            ModuleUpdateMode moduleUpdateMode,
+            TimeSpan edgeletTimeout,
+            bool enableOrphanedIdentityCleanup)
         {
             this.iotHubHostName = Preconditions.CheckNonWhiteSpace(iotHubHostname, nameof(iotHubHostname));
             this.deviceId = Preconditions.CheckNonWhiteSpace(deviceId, nameof(deviceId));
@@ -75,25 +86,31 @@ namespace Microsoft.Azure.Devices.Edge.Agent.Service.Modules
             this.performanceMetricsUpdateFrequency = performanceMetricsUpdateFrequency;
             this.useServerHeartbeat = useServerHeartbeat;
             this.backupConfigFilePath = Preconditions.CheckNonWhiteSpace(backupConfigFilePath, nameof(backupConfigFilePath));
+            this.disableDeviceAnalyticsTelemetry = disableDeviceAnalyticsTelemetry;
+            this.moduleUpdateMode = moduleUpdateMode;
+            this.edgeletTimeout = edgeletTimeout;
+            this.enableOrphanedIdentityCleanup = enableOrphanedIdentityCleanup;
         }
 
         protected override void Load(ContainerBuilder builder)
         {
             // IModuleClientProvider
-            builder.Register(
-                    c => new ModuleClientProvider(
-                        c.Resolve<ISdkModuleClientProvider>(),
-                        this.upstreamProtocol,
-                        this.proxy,
-                        this.productInfo,
-                        this.closeOnIdleTimeout,
-                        this.idleTimeout,
-                        this.useServerHeartbeat))
+            builder.Register(c => new ModuleClientProvider(
+                    c.Resolve<ISdkModuleClientProvider>(),
+                    this.disableDeviceAnalyticsTelemetry ?
+                        Option.None<Task<IRuntimeInfoProvider>>() :
+                        Option.Some(c.Resolve<Task<IRuntimeInfoProvider>>()),
+                    this.upstreamProtocol,
+                    this.proxy,
+                    this.productInfo,
+                    this.closeOnIdleTimeout,
+                    this.idleTimeout,
+                    this.useServerHeartbeat))
                 .As<IModuleClientProvider>()
                 .SingleInstance();
 
             // IModuleManager
-            builder.Register(c => new ModuleManagementHttpClient(this.managementUri, this.apiVersion, Constants.EdgeletClientApiVersion))
+            builder.Register(c => new ModuleManagementHttpClient(this.managementUri, this.apiVersion, Constants.EdgeletClientApiVersion, Option.Some(this.edgeletTimeout)))
                 .As<IModuleManager>()
                 .As<IIdentityManager>()
                 .As<IDeviceManager>()
@@ -101,7 +118,7 @@ namespace Microsoft.Azure.Devices.Edge.Agent.Service.Modules
 
             // IModuleIdentityLifecycleManager
             var identityBuilder = new ModuleIdentityProviderServiceBuilder(this.iotHubHostName, this.deviceId);
-            builder.Register(c => new ModuleIdentityLifecycleManager(c.Resolve<IIdentityManager>(), identityBuilder, this.workloadUri))
+            builder.Register(c => new ModuleIdentityLifecycleManager(c.Resolve<IIdentityManager>(), identityBuilder, this.workloadUri, this.enableOrphanedIdentityCleanup))
                 .As<IModuleIdentityLifecycleManager>()
                 .SingleInstance();
 
@@ -130,6 +147,16 @@ namespace Microsoft.Azure.Devices.Edge.Agent.Service.Modules
                             moduleManager,
                             configSource,
                             combinedDockerConfigProvider);
+
+                        if (this.moduleUpdateMode == ModuleUpdateMode.NonBlocking)
+                        {
+                            factory = new StandardCommandFactory(factory);
+                        }
+                        else
+                        {
+                            factory = new ExecutionPrerequisiteCommandFactory(factory);
+                        }
+
                         factory = new MetricsCommandFactory(factory, metricsProvider);
                         return new LoggingCommandFactory(factory, loggerFactory) as ICommandFactory;
                     })

@@ -9,12 +9,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="3.1.3" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="3.1.3" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.4.0" />
-    <PackageReference Include="Moq" Version="4.10.1" />
-    <PackageReference Include="xunit" Version="2.4.1" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="2.4.1">
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="5.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="5.0.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.3.1" />
+    <PackageReference Include="Moq" Version="4.18.2" />
+    <PackageReference Include="xunit" Version="2.4.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.4.5">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
@@ -24,6 +24,8 @@
     <ProjectReference Include="..\..\..\edge-util\test\Microsoft.Azure.Devices.Edge.Util.Test.Common\Microsoft.Azure.Devices.Edge.Util.Test.Common.csproj" />
     <ProjectReference Include="..\..\src\Microsoft.Azure.Devices.Edge.Agent.Core\Microsoft.Azure.Devices.Edge.Agent.Core.csproj" />
     <ProjectReference Include="..\..\src\Microsoft.Azure.Devices.Edge.Agent.Docker\Microsoft.Azure.Devices.Edge.Agent.Docker.csproj" />
+    <ProjectReference Include="..\..\src\Microsoft.Azure.Devices.Edge.Agent.Edgelet\Microsoft.Azure.Devices.Edge.Agent.Edgelet.csproj" />
+    <ProjectReference Include="..\..\test\Microsoft.Azure.Devices.Edge.Agent.Core.Test\Microsoft.Azure.Devices.Edge.Agent.Core.Test.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,15 +1,13 @@
 // Copyright (c) Microsoft. All rights reserved.
 
-use std::io::Write;
+use std::fmt::Write;
 use std::sync::{Arc, Mutex};
 
-use failure::{Fail, ResultExt};
-use futures::Future;
+use anyhow::Context;
 
 use edgelet_core::ModuleRuntime;
 
-use crate::error::{Error, ErrorKind};
-use crate::Command;
+use crate::error::Error;
 
 pub struct Restart<M, W> {
     id: String,
@@ -27,25 +25,31 @@ impl<M, W> Restart<M, W> {
     }
 }
 
-impl<M, W> Command for Restart<M, W>
+impl<M, W> Restart<M, W>
 where
-    M: 'static + ModuleRuntime + Clone,
-    W: 'static + Write + Send,
+    M: ModuleRuntime,
+    W: std::io::Write + Send,
 {
-    type Future = Box<dyn Future<Item = (), Error = Error> + Send>;
+    pub async fn execute(&self) -> anyhow::Result<()> {
+        let mut output = String::new();
 
-    fn execute(self) -> Self::Future {
-        let id = self.id.clone();
+        // A stop request must be sent to workload socket manager first.
+        // To properly restart, both the stop and start APIs must be called.
+        if let Err(err) = self.runtime.stop(&self.id, None).await {
+            writeln!(
+                output,
+                "warn: {} was not stopped gracefully: {}",
+                self.id, err
+            )?;
+        }
+
+        self.runtime.start(&self.id).await?;
+        writeln!(output, "Restarted {}", self.id)?;
+
         let write = self.output.clone();
-        let result = self
-            .runtime
-            .restart(&id)
-            .map_err(|err| Error::from(err.context(ErrorKind::ModuleRuntime)))
-            .and_then(move |_| {
-                let mut w = write.lock().unwrap();
-                writeln!(w, "{}", id).context(ErrorKind::WriteToStdout)?;
-                Ok(())
-            });
-        Box::new(result)
+        let mut w = write.lock().unwrap();
+        write!(w, "{}", output).context(Error::WriteToStdout)?;
+
+        Ok(())
     }
 }

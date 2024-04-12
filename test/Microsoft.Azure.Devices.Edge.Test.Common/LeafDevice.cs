@@ -8,7 +8,7 @@ namespace Microsoft.Azure.Devices.Edge.Test.Common
     using System.IO;
     using System.Linq;
     using System.Net;
-    using System.Reflection.Metadata.Ecma335;
+    using System.Security.Authentication;
     using System.Security.Cryptography.X509Certificates;
     using System.Text;
     using System.Threading;
@@ -17,6 +17,7 @@ namespace Microsoft.Azure.Devices.Edge.Test.Common
     using Microsoft.Azure.Devices.Edge.Test.Common.Certs;
     using Microsoft.Azure.Devices.Edge.Test.Common.Config;
     using Microsoft.Azure.Devices.Edge.Util;
+    using Microsoft.Azure.Devices.Edge.Util.TransientFaultHandling;
     using Serilog;
 
     public class LeafDevice
@@ -41,9 +42,12 @@ namespace Microsoft.Azure.Devices.Edge.Test.Common
             Option<string> parentId,
             bool useSecondaryCertificate,
             CertificateAuthority ca,
+            string certsPath,
             IotHub iotHub,
+            string edgeHostname,
             CancellationToken token,
-            Option<string> modelId)
+            Option<string> modelId,
+            bool nestedEdge)
         {
             ClientOptions options = new ClientOptions();
             modelId.ForEach(m => options.ModelId = m);
@@ -52,8 +56,6 @@ namespace Microsoft.Azure.Devices.Edge.Test.Common
                 {
                     ITransportSettings transport = protocol.ToTransportSettings();
                     OsPlatform.Current.InstallCaCertificates(ca.EdgeCertificates.TrustedCertificates, transport);
-
-                    string edgeHostname = Dns.GetHostName().ToLower();
 
                     switch (auth)
                     {
@@ -65,7 +67,8 @@ namespace Microsoft.Azure.Devices.Edge.Test.Common
                                 transport,
                                 edgeHostname,
                                 token,
-                                options);
+                                options,
+                                nestedEdge);
 
                         case AuthenticationType.CertificateAuthority:
                             {
@@ -74,6 +77,7 @@ namespace Microsoft.Azure.Devices.Edge.Test.Common
                                     leafDeviceId,
                                     p,
                                     ca,
+                                    certsPath,
                                     iotHub,
                                     transport,
                                     edgeHostname,
@@ -89,6 +93,7 @@ namespace Microsoft.Azure.Devices.Edge.Test.Common
                                     p,
                                     useSecondaryCertificate,
                                     ca,
+                                    certsPath,
                                     iotHub,
                                     transport,
                                     edgeHostname,
@@ -112,7 +117,8 @@ namespace Microsoft.Azure.Devices.Edge.Test.Common
             ITransportSettings transport,
             string edgeHostname,
             CancellationToken token,
-            ClientOptions options)
+            ClientOptions options,
+            bool nestedEdge)
         {
             Device leaf = new Device(leafDeviceId)
             {
@@ -129,6 +135,13 @@ namespace Microsoft.Azure.Devices.Edge.Test.Common
                     leaf.Scope = edge.Scope;
                 });
 
+            // @To Remove this is a hack to be able to create lea. See PBI: 9171870
+            string hostname = iotHub.Hostname;
+            if (nestedEdge)
+            {
+                hostname = edgeHostname;
+            }
+
             leaf = await iotHub.CreateDeviceIdentityAsync(leaf, token);
 
             return await DeleteIdentityIfFailedAsync(
@@ -138,7 +151,7 @@ namespace Microsoft.Azure.Devices.Edge.Test.Common
                 () =>
                 {
                     string connectionString =
-                        $"HostName={iotHub.Hostname};" +
+                        $"HostName={hostname};" +
                         $"DeviceId={leaf.Id};" +
                         $"SharedAccessKey={leaf.Authentication.SymmetricKey.PrimaryKey};" +
                         $"GatewayHostName={edgeHostname}";
@@ -155,6 +168,7 @@ namespace Microsoft.Azure.Devices.Edge.Test.Common
             string leafDeviceId,
             string parentId,
             CertificateAuthority ca,
+            string certsPath,
             IotHub iotHub,
             ITransportSettings transport,
             string edgeHostname,
@@ -180,7 +194,7 @@ namespace Microsoft.Azure.Devices.Edge.Test.Common
                 token,
                 async () =>
                 {
-                    IdCertificates certFiles = await ca.GenerateIdentityCertificatesAsync(leafDeviceId, token);
+                    var certFiles = await ca.GenerateIdentityCertificatesAsync(leafDeviceId, certsPath, token);
 
                     (X509Certificate2 leafCert, IEnumerable<X509Certificate2> trustedCerts) =
                         CertificateHelper.GetServerCertificateAndChainFromFile(certFiles.CertificatePath, certFiles.KeyPath);
@@ -206,14 +220,15 @@ namespace Microsoft.Azure.Devices.Edge.Test.Common
             string parentId,
             bool useSecondaryCertificate,
             CertificateAuthority ca,
+            string certsPath,
             IotHub iotHub,
             ITransportSettings transport,
             string edgeHostname,
             CancellationToken token,
             ClientOptions options)
         {
-            IdCertificates primary = await ca.GenerateIdentityCertificatesAsync($"{leafDeviceId}-1", token);
-            IdCertificates secondary = await ca.GenerateIdentityCertificatesAsync($"{leafDeviceId}-2", token);
+            var primary = await ca.GenerateIdentityCertificatesAsync($"{leafDeviceId}-1", certsPath, token);
+            var secondary = await ca.GenerateIdentityCertificatesAsync($"{leafDeviceId}-2", certsPath, token);
 
             string[] streams = await Task.WhenAll(
                 new[]
@@ -302,9 +317,18 @@ namespace Microsoft.Azure.Devices.Edge.Test.Common
         static async Task<LeafDevice> CreateLeafDeviceAsync(Device device, Func<DeviceClient> clientFactory, IotHub iotHub, CancellationToken token)
         {
             DeviceClient client = clientFactory();
+
+            client.SetConnectionStatusChangesHandler((status, reason) =>
+            {
+                Log.Verbose($"Detected change in connection status:{Environment.NewLine}Changed Status: {status} Reason: {reason}");
+            });
+
             await client.SetMethodHandlerAsync(nameof(DirectMethod), DirectMethod, null, token);
+
             return new LeafDevice(device, client, iotHub);
         }
+
+        public Task Close() => this.client.CloseAsync();
 
         public Task SendEventAsync(CancellationToken token)
         {

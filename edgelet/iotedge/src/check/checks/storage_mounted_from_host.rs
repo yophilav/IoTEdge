@@ -2,25 +2,27 @@
 
 use std::path::{Path, PathBuf};
 
-use failure::{self, Context, ResultExt};
+use anyhow::Context;
 use regex::Regex;
 
-use crate::check::{checker::Checker, Check, CheckResult};
+use crate::check::{Check, CheckResult, Checker, CheckerMeta};
 
-#[derive(Default, serde_derive::Serialize)]
+#[derive(Default, serde::Serialize)]
 pub(crate) struct EdgeAgentStorageMounted {
     storage_directory: Option<PathBuf>,
     container_directories: Option<Vec<PathBuf>>,
 }
 
+#[async_trait::async_trait]
 impl Checker for EdgeAgentStorageMounted {
-    fn id(&self) -> &'static str {
-        "edge-agent-storage-mounted-from-host"
+    fn meta(&self) -> CheckerMeta {
+        CheckerMeta {
+            id: "edge-agent-storage-mounted-from-host",
+            description: "production readiness: Edge Agent's storage directory is persisted on the host filesystem",
+        }
     }
-    fn description(&self) -> &'static str {
-        "production readiness: Edge Agent's storage directory is persisted on the host filesystem"
-    }
-    fn execute(&mut self, check: &mut Check, _: &mut tokio::runtime::Runtime) -> CheckResult {
+
+    async fn execute(&mut self, check: &mut Check) -> CheckResult {
         storage_mounted_from_host(
             check,
             "edgeAgent",
@@ -28,27 +30,27 @@ impl Checker for EdgeAgentStorageMounted {
             &mut self.storage_directory,
             &mut self.container_directories,
         )
+        .await
         .unwrap_or_else(CheckResult::Failed)
-    }
-    fn get_json(&self) -> serde_json::Value {
-        serde_json::to_value(self).unwrap()
     }
 }
 
-#[derive(Default, serde_derive::Serialize)]
+#[derive(Default, serde::Serialize)]
 pub struct EdgeHubStorageMounted {
     storage_directory: Option<PathBuf>,
     container_directories: Option<Vec<PathBuf>>,
 }
 
+#[async_trait::async_trait]
 impl Checker for EdgeHubStorageMounted {
-    fn id(&self) -> &'static str {
-        "edge-hub-storage-mounted-from-host"
+    fn meta(&self) -> CheckerMeta {
+        CheckerMeta {
+            id: "edge-hub-storage-mounted-from-host",
+            description: "production readiness: Edge Hub's storage directory is persisted on the host filesystem",
+        }
     }
-    fn description(&self) -> &'static str {
-        "production readiness: Edge Hub's storage directory is persisted on the host filesystem"
-    }
-    fn execute(&mut self, check: &mut Check, _: &mut tokio::runtime::Runtime) -> CheckResult {
+
+    async fn execute(&mut self, check: &mut Check) -> CheckResult {
         storage_mounted_from_host(
             check,
             "edgeHub",
@@ -56,20 +58,18 @@ impl Checker for EdgeHubStorageMounted {
             &mut self.storage_directory,
             &mut self.container_directories,
         )
+        .await
         .unwrap_or_else(CheckResult::Failed)
-    }
-    fn get_json(&self) -> serde_json::Value {
-        serde_json::to_value(self).unwrap()
     }
 }
 
-fn storage_mounted_from_host(
-    check: &mut Check,
+async fn storage_mounted_from_host<'a>(
+    check: &'a mut Check,
     container_name: &'static str,
     storage_directory_name: &'static str,
-    storage_directory_out: &mut Option<PathBuf>,
-    container_directories_out: &mut Option<Vec<PathBuf>>,
-) -> Result<CheckResult, failure::Error> {
+    storage_directory_out: &'a mut Option<PathBuf>,
+    container_directories_out: &'a mut Option<Vec<PathBuf>>,
+) -> anyhow::Result<CheckResult> {
     lazy_static::lazy_static! {
         static ref STORAGE_FOLDER_ENV_VAR_KEY_REGEX: Regex =
             Regex::new("(?i)^storagefolder=(.*)")
@@ -82,7 +82,7 @@ fn storage_mounted_from_host(
         return Ok(CheckResult::Skipped);
     };
 
-    let inspect_result = inspect_container(docker_host_arg, container_name)?;
+    let inspect_result = inspect_container(docker_host_arg, container_name).await?;
 
     let temp_dir = inspect_result
         .config()
@@ -95,17 +95,11 @@ fn storage_mounted_from_host(
                 .and_then(|capture| capture.get(1))
                 .map(|match_| match_.as_str())
         })
-        .unwrap_or(
-            // Hard-code the value here rather than using the tempfile crate. It needs to match .Net Core's implementation,
-            // and needs to be in the context of the container user instead of the host running `iotedge check`.
-            if cfg!(windows) {
-                r"C:\Windows\Temp"
-            } else {
-                "/tmp"
-            },
-        );
+        // Hard-code the value here rather than using the tempfile crate. It needs to match .Net Core's implementation,
+        // and needs to be in the context of the container user instead of the host running `iotedge check`.
+        .unwrap_or("/tmp");
 
-    let storage_directory = Path::new(&*temp_dir).join(storage_directory_name);
+    let storage_directory = Path::new(&temp_dir).join(storage_directory_name);
     *storage_directory_out = Some(storage_directory.clone());
 
     let mounted_directories = inspect_result
@@ -130,25 +124,24 @@ fn storage_mounted_from_host(
         .into_iter()
         .any(|container_directory| storage_directory.starts_with(container_directory))
     {
-        return Ok(CheckResult::Warning(
-            Context::new(format!(
-                "The {} module is not configured to persist its {} directory on the host filesystem.\n\
+        return Ok(CheckResult::Warning(anyhow::Error::msg(format!(
+            "The {} module is not configured to persist its {} directory on the host filesystem.\n\
                  Data might be lost if the module is deleted or updated.\n\
                  Please see https://aka.ms/iotedge-storage-host for best practices.",
-                container_name,
-                storage_directory.display(),
-            )).into(),
-        ));
+            container_name,
+            storage_directory.display(),
+        ))));
     }
 
     Ok(CheckResult::Ok)
 }
 
-fn inspect_container(
+async fn inspect_container(
     docker_host_arg: &str,
     name: &str,
-) -> Result<docker::models::InlineResponse200, failure::Error> {
-    Ok(super::docker(docker_host_arg, &["inspect", name])
+) -> anyhow::Result<docker::models::InlineResponse200> {
+    super::docker(docker_host_arg, &["inspect", name])
+        .await
         .map_err(|(_, err)| err)
         .and_then(|output| {
             let (inspect_result,): (docker::models::InlineResponse200,) =
@@ -156,5 +149,5 @@ fn inspect_container(
                     .context("Could not parse result of docker inspect")?;
             Ok(inspect_result)
         })
-        .with_context(|_| format!("Could not check current state of {} container", name))?)
+        .with_context(|| format!("Could not check current state of {} container", name))
 }

@@ -1,24 +1,55 @@
 parameters:
+  app: ''
+  bin_dir: '$(Build.BinariesDirectory)'
+  displayName: ''
+  download_artifacts: true
   name: ''
-  imageName: ''
-  namespace: 'microsoft'
-  project: ''
+  platforms: 'linux/amd64,linux/arm/v7,linux/arm64'
+  use_rocksdb: false
   version: ''
 
 steps:
-  - task: Bash@3
-    displayName: Build Image - ${{ parameters.name }} - amd64
+  - checkout: self
+    fetchDepth: 0
+
+  - task: DownloadBuildArtifacts@0
+    displayName: Download artifacts
+    condition: and(succeeded(), ${{ parameters.download_artifacts }})
     inputs:
-      filePath: scripts/linux/buildImage.sh
-      arguments: -r "$(registry.address)" -u "$(registry.user)" -p "$(registry.password)" -i "${{ parameters.imageName }}" -n "${{ parameters.namespace }}" -P "${{ parameters.project }}" -v "${{ parameters.version }}"
-  - task: Bash@3
-    displayName: Build Image - ${{ parameters.name }} - arm32
+      buildType: 'current'
+      downloadPath: '$(Build.ArtifactStagingDirectory)'
+      downloadType: 'single'
+      artifactName: 'consolidated_artifacts'
+      extractTars: true
+
+  - task: CopyFiles@2
+    displayName: Copy artifacts
+    condition: and(succeeded(), ${{ parameters.download_artifacts }})
     inputs:
-      filePath: scripts/linux/buildImage.sh
-      arguments: -r "$(registry.address)" -u "$(registry.user)" -p "$(registry.password)" -i "${{ parameters.imageName }}" -n "${{ parameters.namespace }}" -P "${{ parameters.project }}" -v "${{ parameters.version }}" --target-arch armv7l
-  - task: Bash@3
-    displayName: Build Image - ${{ parameters.name }} - arm64 
-    condition: and(ne('${{ parameters.name }}', 'Functions Sample'), succeeded())
+      sourceFolder: '$(Agent.TempDirectory)/extracted_tars/consolidated_artifacts'
+      contents: '**'
+      targetFolder: '$(Build.BinariesDirectory)/publish'          
+
+  - task: CopyFiles@2
+    displayName: Copy RocksDB libs into app
+    condition: and(succeeded(), eq('${{ parameters.use_rocksdb }}', 'true'))
     inputs:
-      filePath: scripts/linux/buildImage.sh
-      arguments: -r "$(registry.address)" -u "$(registry.user)" -p "$(registry.password)" -i "${{ parameters.imageName }}" -n "${{ parameters.namespace }}" -P "${{ parameters.project }}" -v "${{ parameters.version }}" --target-arch aarch64
+      sourceFolder: '$(Build.BinariesDirectory)/publish/librocksdb'
+      contents: '**'
+      targetFolder: '$(Build.BinariesDirectory)/publish/${{ parameters.app }}/librocksdb'          
+
+  - task: Docker@2
+    displayName: Docker login
+    inputs:
+      command: login
+      containerRegistry: $(service-connection.registry)
+
+  - script: |
+      scripts/linux/buildImage.sh \
+        --app '${{ parameters.app }}' \
+        --bin '${{ parameters.bin_dir }}' \
+        --name '${{ parameters.name }}' \
+        --platforms '${{ parameters.platforms }}' \
+        --registry '$(registry.address)' \
+        --version '${{ parameters.version }}'
+    displayName: Build Image - ${{ parameters.displayName }}

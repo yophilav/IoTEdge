@@ -2,12 +2,12 @@
 namespace Microsoft.Azure.Devices.Edge.Test.Helpers
 {
     using System;
-    using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Azure.Devices.Edge.Test.Common;
-    using Microsoft.Azure.Devices.Edge.Util;
+    using Microsoft.Azure.Devices.Edge.Test.Common.Certs;
     using NUnit.Framework;
+    using NestedEdgeConfig = Microsoft.Azure.Devices.Edge.Test.Common.EdgeDevice.NestedEdgeConfig;
 
     // NUnit's [Timeout] attribute isn't supported in .NET Standard
     // and even if it were, it doesn't run the teardown method when
@@ -16,29 +16,25 @@ namespace Microsoft.Azure.Devices.Edge.Test.Helpers
     // we have our own timeout mechanism.
     public class ManualProvisioningFixture : BaseFixture
     {
-        protected readonly IotHub iotHub;
-        protected IEdgeDaemon daemon;
+        public IotHub IotHub { get; }
 
-        public ManualProvisioningFixture(string connectionString, string eventHubEndpoint)
-        {
-            this.iotHub = new IotHub(connectionString, eventHubEndpoint, Context.Current.Proxy);
-        }
+        protected IEdgeDaemon daemon;
+        protected CertificateAuthority ca;
 
         public ManualProvisioningFixture()
-            : this(Context.Current.ConnectionString, Context.Current.EventHubEndpoint)
         {
+            this.IotHub = new IotHub(
+                Context.Current.ConnectionString,
+                Context.Current.EventHubEndpoint,
+                Context.Current.TestRunnerProxy);
         }
 
         [OneTimeSetUp]
         protected async Task BeforeAllTestsAsync()
         {
             using var cts = new CancellationTokenSource(Context.Current.SetupTimeout);
-            Option<Registry> bootstrapRegistry = Option.Maybe(Context.Current.Registries.FirstOrDefault());
-            this.daemon = await OsPlatform.Current.CreateEdgeDaemonAsync(
-                Context.Current.InstallerPath,
-                Context.Current.EdgeAgentBootstrapImage,
-                bootstrapRegistry,
-                cts.Token);
+            this.daemon = await OsPlatform.Current.CreateEdgeDaemonAsync(Context.Current.PackagePath, cts.Token);
+            this.cli = this.daemon.GetCli();
         }
 
         protected async Task ConfigureDaemonAsync(
@@ -51,10 +47,8 @@ namespace Microsoft.Azure.Devices.Edge.Test.Helpers
 
             try
             {
-                await this.daemon.WaitForStatusAsync(EdgeDaemonStatus.Running, token);
-
-                var agent = new EdgeAgent(device.Id, this.iotHub);
-                await agent.WaitForStatusAsync(EdgeModuleStatus.Running, token);
+                var agent = new EdgeAgent(device.Id, this.IotHub);
+                await agent.WaitForStatusAsync(EdgeModuleStatus.Running, this.cli, token);
                 await agent.PingAsync(token);
             }
 
@@ -65,8 +59,19 @@ namespace Microsoft.Azure.Devices.Edge.Test.Helpers
             }
             finally
             {
-                await NUnitLogs.CollectAsync(startTime, token);
+                using var cts = new CancellationTokenSource(Context.Current.TeardownTimeout);
+                await NUnitLogs.CollectAsync(startTime, this.cli, cts.Token);
             }
+        }
+
+        protected NestedEdgeConfig GetNestedEdgeConfig(IotHub iotHub)
+        {
+            return new NestedEdgeConfig(
+                iotHub,
+                Context.Current.NestedEdge,
+                Context.Current.ParentDeviceId,
+                Context.Current.ParentHostname,
+                Context.Current.Hostname);
         }
     }
 }

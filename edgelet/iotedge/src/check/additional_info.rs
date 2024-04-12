@@ -7,10 +7,10 @@ use byte_unit::{Byte, ByteUnit};
 use sysinfo::{DiskExt, SystemExt};
 
 /// Additional info for the JSON output of `iotedge check`
-#[derive(Clone, Debug, serde_derive::Serialize)]
+#[derive(Clone, Debug, serde::Serialize)]
 pub(super) struct AdditionalInfo {
     pub(super) docker_version: Option<String>,
-    pub(super) iotedged_version: Option<String>,
+    pub(super) aziot_edged_version: Option<String>,
     now: chrono::DateTime<chrono::Utc>,
     os: OsInfo,
     system_info: SystemInfo,
@@ -20,7 +20,7 @@ impl AdditionalInfo {
     pub(super) fn new() -> Self {
         AdditionalInfo {
             docker_version: None,
-            iotedged_version: None,
+            aziot_edged_version: None,
             now: chrono::Utc::now(),
             os: OsInfo::new(),
             system_info: SystemInfo::new(),
@@ -36,14 +36,15 @@ impl AdditionalInfo {
 ///  OS                  | id                  | version_id
 /// ---------------------+---------------------+------------
 ///  CentOS 7            | centos              | 7
-///  Debian 9            | debian              | 9
+///  RedHat EL 8         | rhel                | 8.5
+///  Debian 10           | debian              | 10
+///  Debian 11           | debian              | 11
 ///  openSUSE Tumbleweed | opensuse-tumbleweed | 20190325
-///  Ubuntu 18.04        | ubuntu              | 18.04
-///  Windows 10          | windows             | 10.0.17763
+///  Ubuntu 22.04        | ubuntu              | 22.04
 /// ```
 ///
 /// Ref: <https://www.freedesktop.org/software/systemd/man/os-release.html>
-#[derive(Clone, Debug, serde_derive::Serialize)]
+#[derive(Clone, Debug, serde::Serialize)]
 pub(super) struct OsInfo {
     id: Option<String>,
     version_id: Option<String>,
@@ -52,31 +53,6 @@ pub(super) struct OsInfo {
 }
 
 impl OsInfo {
-    #[cfg(windows)]
-    pub(super) fn new() -> Self {
-        let mut result = OsInfo {
-            id: Some("windows".to_owned()),
-            version_id: None,
-            arch: ARCH,
-            // Technically wrong if someone compiles and runs a x86 build on an x64 OS, but we don't provide
-            // Windows x86 builds.
-            bitness: std::mem::size_of::<usize>() * 8,
-        };
-
-        result.version_id = os_version()
-            .map(
-                |(major_version, minor_version, build_number, csd_version)| {
-                    format!(
-                        "{}.{}.{} {}",
-                        major_version, minor_version, build_number, csd_version,
-                    )
-                },
-            )
-            .ok();
-
-        result
-    }
-
     #[cfg(unix)]
     pub(super) fn new() -> Self {
         use std::fs::File;
@@ -141,63 +117,7 @@ fn parse_os_release_line(line: &str) -> Option<(&str, &str)> {
 
     Some((key, value))
 }
-
-#[cfg(windows)]
-pub(super) fn os_version() -> Result<
-    (
-        winapi::shared::minwindef::DWORD,
-        winapi::shared::minwindef::DWORD,
-        winapi::shared::minwindef::DWORD,
-        String,
-    ),
-    failure::Error,
-> {
-    use failure::Context;
-    use winapi::shared::ntdef::NTSTATUS;
-    use winapi::shared::ntstatus::STATUS_SUCCESS;
-    use winapi::um::winnt::{LPOSVERSIONINFOW, OSVERSIONINFOW};
-
-    extern "system" {
-        // Can't use GetVersion(Ex) since it reports version N if the caller doesn't have a manifest indicating that it supports Windows N + 1.
-        // Rust binaries don't have a manifest by default, so GetVersion(Ex) always reports Windows 8.
-        pub(super) fn RtlGetVersion(lpVersionInformation: LPOSVERSIONINFOW) -> NTSTATUS;
-    }
-
-    unsafe {
-        let mut os_version_info: OSVERSIONINFOW = std::mem::zeroed();
-
-        #[allow(clippy::cast_possible_truncation)]
-        {
-            os_version_info.dwOSVersionInfoSize = std::mem::size_of_val(&os_version_info) as _;
-        }
-
-        let status = RtlGetVersion(&mut os_version_info);
-        if status != STATUS_SUCCESS {
-            return Err(Context::new(format!("RtlGetVersion failed with 0x{:08x}", status)).into());
-        }
-
-        let len = os_version_info
-            .szCSDVersion
-            .iter()
-            .position(|&c| c == 0)
-            .ok_or_else(|| {
-                Context::new("null terminator not found in szCSDVersion returned by RtlGetVersion")
-            })?;
-        let csd_version: std::ffi::OsString =
-            std::os::windows::ffi::OsStringExt::from_wide(&os_version_info.szCSDVersion[..len]);
-        let csd_version = csd_version
-            .into_string()
-            .map_err(|_| Context::new("could not parse szCSDVersion returned by RtlGetVersion: contains invalid unicode codepoints"))?;
-
-        Ok((
-            os_version_info.dwMajorVersion,
-            os_version_info.dwMinorVersion,
-            os_version_info.dwBuildNumber,
-            csd_version,
-        ))
-    }
-}
-#[derive(Clone, Debug, Default, serde_derive::Serialize)]
+#[derive(Clone, Debug, Default, serde::Serialize)]
 struct SystemInfo {
     used_ram: String,
     total_ram: String,
@@ -214,12 +134,12 @@ impl SystemInfo {
             let mut system = sysinfo::System::new();
             system.refresh_all();
             SystemInfo {
-                total_ram: pretty_kbyte(system.get_total_memory()),
-                used_ram: pretty_kbyte(system.get_used_memory()),
-                total_swap: pretty_kbyte(system.get_total_swap()),
-                used_swap: pretty_kbyte(system.get_used_swap()),
+                total_ram: pretty_kbyte(system.total_memory()),
+                used_ram: pretty_kbyte(system.used_memory()),
+                total_swap: pretty_kbyte(system.total_swap()),
+                used_swap: pretty_kbyte(system.used_swap()),
 
-                disks: system.get_disks().iter().map(DiskInfo::new).collect(),
+                disks: system.disks().iter().map(DiskInfo::new).collect(),
             }
         }
 
@@ -228,7 +148,7 @@ impl SystemInfo {
     }
 }
 
-#[derive(Clone, Debug, Default, serde_derive::Serialize)]
+#[derive(Clone, Debug, Default, serde::Serialize)]
 struct DiskInfo {
     name: String,
     percent_free: String,
@@ -244,8 +164,8 @@ impl DiskInfo {
     where
         T: DiskExt,
     {
-        let available_space = disk.get_available_space();
-        let total_space = disk.get_total_space();
+        let available_space = disk.available_space();
+        let total_space = disk.total_space();
         #[allow(clippy::cast_precision_loss)]
         let percent_free = format!(
             "{:.1}%",
@@ -253,7 +173,7 @@ impl DiskInfo {
         );
 
         DiskInfo {
-            name: disk.get_name().to_string_lossy().into_owned(),
+            name: disk.name().to_string_lossy().into_owned(),
             percent_free,
             available_space: Byte::from_bytes(u128::from(available_space))
                 .get_appropriate_unit(true)
@@ -261,8 +181,8 @@ impl DiskInfo {
             total_space: Byte::from_bytes(u128::from(total_space))
                 .get_appropriate_unit(true)
                 .format(2),
-            file_system: String::from_utf8_lossy(disk.get_file_system()).into_owned(),
-            file_type: format!("{:?}", disk.get_type()),
+            file_system: String::from_utf8_lossy(disk.file_system()).into_owned(),
+            file_type: format!("{:?}", disk.type_()),
         }
     }
 }
@@ -270,7 +190,7 @@ impl DiskInfo {
 #[cfg(unix)]
 fn pretty_kbyte(bytes: u64) -> String {
     #[allow(clippy::cast_precision_loss)]
-    match Byte::from_unit(bytes as f64, ByteUnit::KiB) {
+    match Byte::from_unit(bytes as f64, ByteUnit::B) {
         Ok(b) => b.get_appropriate_unit(true).format(2),
         Err(err) => format!("could not parse bytes value: {:?}", err),
     }

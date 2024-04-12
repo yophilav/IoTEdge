@@ -5,13 +5,13 @@ namespace Microsoft.Azure.Devices.Edge.Test.Common
     using System.Collections.Generic;
     using System.Linq;
     using System.Text;
+    using System.Text.RegularExpressions;
     using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Azure.Devices.Edge.Util;
     using Microsoft.Azure.Devices.Shared;
     using Newtonsoft.Json;
     using Newtonsoft.Json.Linq;
-    using Newtonsoft.Json.Serialization;
     using Serilog;
 
     public enum EdgeModuleStatus
@@ -34,7 +34,7 @@ namespace Microsoft.Azure.Devices.Edge.Test.Common
             this.iotHub = iotHub;
         }
 
-        public static Task WaitForStatusAsync(IEnumerable<EdgeModule> modules, EdgeModuleStatus desired, CancellationToken token)
+        public static Task WaitForStatusAsync(IEnumerable<EdgeModule> modules, EdgeModuleStatus desired, IotedgeCli cli, CancellationToken token)
         {
             string[] moduleIds = modules.Select(m => m.Id.TrimStart('$')).Distinct().ToArray();
 
@@ -45,9 +45,7 @@ namespace Microsoft.Azure.Devices.Edge.Test.Common
                 await Retry.Do(
                     async () =>
                     {
-                        string[] output = await Process.RunAsync("iotedge", "list", token);
-
-                        Log.Verbose(string.Join("\n", output));
+                        string[] output = await cli.RunAsync("list", token);
 
                         return output
                             .Where(
@@ -73,7 +71,9 @@ namespace Microsoft.Azure.Devices.Edge.Test.Common
                         // Retry if iotedged's management endpoint is still starting up,
                         // and therefore isn't responding to `iotedge list` yet
                         static bool DaemonNotReady(string details) =>
+                            details.Contains("Incorrect function", StringComparison.OrdinalIgnoreCase) ||
                             details.Contains("Could not list modules", StringComparison.OrdinalIgnoreCase) ||
+                            details.Contains("Operation not permitted", StringComparison.OrdinalIgnoreCase) ||
                             details.Contains("Socket file could not be found", StringComparison.OrdinalIgnoreCase);
 
                         return DaemonNotReady(e.ToString());
@@ -89,8 +89,8 @@ namespace Microsoft.Azure.Devices.Edge.Test.Common
                 desired.ToString().ToLower());
         }
 
-        public Task WaitForStatusAsync(EdgeModuleStatus desired, CancellationToken token) =>
-            WaitForStatusAsync(new[] { this }, desired, token);
+        public Task WaitForStatusAsync(EdgeModuleStatus desired, IotedgeCli cli, CancellationToken token) =>
+            WaitForStatusAsync(new[] { this }, desired, cli, token);
 
         public Task<string> WaitForEventsReceivedAsync(
             DateTime seekTime,
@@ -109,7 +109,6 @@ namespace Microsoft.Azure.Devices.Edge.Test.Common
 
                         resultBody = Encoding.UTF8.GetString(data.Body);
                         Log.Verbose($"Received event for '{devId}/{modId}' with body '{resultBody}'");
-
                         return devId != null && devId.ToString().Equals(this.deviceId)
                                                 && modId != null && modId.ToString().Equals(this.Id)
                                                 && requiredProperties.All(data.Properties.ContainsKey);
@@ -136,11 +135,23 @@ namespace Microsoft.Azure.Devices.Edge.Test.Common
             Retry.Do(
                 async () =>
                 {
-                    Twin twin = await this.iotHub.GetTwinAsync(this.deviceId, this.Id, token);
+                    Twin twin = await this.iotHub.GetTwinAsync(this.deviceId, Option.Some(this.Id), token);
                     return twin.Properties.Reported;
                 },
                 reported => JsonEquals((expected, "properties.reported"), (reported, string.Empty)),
-                null,
+                // Ignore key not found Exception. There can be a delay between deployement on device and reported state, especially in nested configuration
+                e =>
+                {
+                    if (e is KeyNotFoundException)
+                    {
+                        Log.Verbose("The device has not yet reported all the keys, retrying:" + e);
+                        return true;
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                },
                 TimeSpan.FromSeconds(5),
                 token);
 
@@ -204,6 +215,13 @@ namespace Microsoft.Azure.Devices.Edge.Test.Common
                     result[key].Value = createOptions.ToString(Formatting.None);
                 }
 
+                var imagesKeys = result.Keys
+                    .Where(k => k.EndsWith("settings.image"));
+                foreach (var imageKeys in imagesKeys)
+                {
+                    result[imageKeys].Value = Regex.Replace((string)result[imageKeys].Value, ".*?/(.*)", m => m.Groups[1].Value);
+                }
+
                 return result;
             }
 
@@ -213,8 +231,12 @@ namespace Microsoft.Azure.Devices.Edge.Test.Common
             // comparand equals reference if, for each json value in reference:
             // - comparand has a json value with the same path
             // - the json values match
-            bool match = referenceValues.All(kvp => comparandValues.ContainsKey(kvp.Key) &&
-                kvp.Value.Equals(comparandValues[kvp.Key]));
+            bool match = referenceValues.All(
+                kvp =>
+                {
+                    return comparandValues.ContainsKey(kvp.Key) &&
+                        kvp.Value.Equals(comparandValues[kvp.Key]);
+                });
 
             if (!match)
             {

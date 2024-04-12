@@ -1,71 +1,86 @@
 #!/bin/bash
 
 ###############################################################################
-# This Script builds a specific Edge application in their respective docker
-# containers. This script expects that buildBranch.sh was invoked earlier and
-# all the necessary application files and their Dockerfile be published in
-# directory identified by environment variable BUILD_BINARIESDIRECTORY
+# This script builds an Edge application as a multi-platform Docker image
+# and tags it as:
+#   {registry}/{namespace}/{name}:{version}
+# Each platform-specific image is also tagged:
+#   {registry}/{namespace}/{name}:{version}-{platform}
+# ...where {platform} is one of linux-amd64, linux-arm64v8, or linux-arm32v7.
+#
+# The script expects that buildBranch.sh was invoked earlier and all the
+# application's files were published to the directory '{bin}/publish/{app}',
+# where {bin} is passed to the script's '--bin' parameter and {app} is passed
+# to the '--app' parameter. It also expects that the application's Dockerfile
+# was published to '{bin}/publish/{app}/docker/linux/Dockerfile'.
 ###############################################################################
 
-set -e
+set -euo pipefail
 
 ###############################################################################
 # Define Environment Variables
 ###############################################################################
-ARCH=$(uname -m)
-SCRIPT_NAME=$(basename "$0")
-PUBLISH_DIR=
-BASE_TAG=
-PROJECT=
-DOCKERFILE=
-DOCKER_IMAGENAME=
-DEFAULT_DOCKER_NAMESPACE="microsoft"
-DOCKER_NAMESPACE=${DEFAULT_DOCKER_NAMESPACE}
+APP=
+APP_BINARIESDIRECTORY=
+PLATFORMS='linux/amd64,linux/arm/v7,linux/arm64'
 BUILD_BINARIESDIRECTORY=${BUILD_BINARIESDIRECTORY:=""}
-SKIP_PUSH=0
+DOCKER_IMAGENAME=
+DOCKER_NAMESPACE='microsoft'
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+SCRIPT_NAME=$(basename "$0")
 
 ###############################################################################
-# Function to obtain the underlying architecture and check if supported
+# Check format and content of the --platforms argument
 ###############################################################################
-check_arch()
-{
-    if [[ "$ARCH" == "x86_64" ]]; then
-        ARCH="amd64"
-    elif [[ "$ARCH" == "armv7l" ]]; then
-        ARCH="arm32v7"
-    elif [[ "$ARCH" == "aarch64" ]]; then
-        ARCH="arm64v8"
-    else
-        echo "Unsupported architecture"
-        exit 1
-    fi
+check_platforms() {
+    IFS=',' read -a plat_arr <<< "$PLATFORMS"
+    for platform in ${plat_arr[@]}
+    do
+        case "$platform" in
+            'linux/amd64'|'linux/arm64'|'linux/arm/v7') ;;
+            *) echo "Unsupported platform '$platform'" && exit 1 ;;
+        esac
+    done
+}
+
+###############################################################################
+# Convert from Docker's platform format to our image tag format.
+# Docker's format:
+#   linux/amd64, linux/arm64, or linux/arm/v7
+#   (see Docker's TARGETPLATFORM automatic variable[1])
+# Our format:
+#   linux-amd64,  linux-arm64v8, and linux-arm32v7
+# [1] https://docs.docker.com/engine/reference/builder/#automatic-platform-args-in-the-global-scope
+###############################################################################
+convert_platform() {
+    platform="$1"
+    case "$platform" in
+        'linux/amd64') echo 'linux-amd64' ;;
+        'linux/arm64') echo 'linux-arm64v8' ;;
+        'linux/arm/v7') echo 'linux-arm32v7' ;;
+        *) echo "Unsupported platform '$platform'" && exit 1 ;;
+    esac
 }
 
 ###############################################################################
 # Print usage information pertaining to this script and exit
 ###############################################################################
-usage()
-{
+usage() {
     echo "$SCRIPT_NAME [options]"
     echo "Note: Depending on the options you might have to run this as root or sudo."
     echo ""
     echo "options"
-    echo " -i, --image-name     Image name (e.g. edge-agent)"
-    echo " -P, --project        Project to build image for (e.g. Microsoft.Azure.Devices.Edge.Agent.Service)"
+    echo " -a, --app            App to build image for (e.g. Microsoft.Azure.Devices.Edge.Agent.Service)"
+    echo " -b, --bin            Path to the application binaries. Either use this option or set env variable BUILD_BINARIESDIRECTORY"
+    echo " -h, --help           Print this message and exit"
+    echo " -n, --name           Image name (e.g. azureiotedge-agent)"
+    echo " -p, --platforms      Platforms to build. Default is '$PLATFORMS'"
     echo " -r, --registry       Docker registry required to build, tag and run the module"
-    echo " -u, --username       Docker Registry Username"
-    echo " -p, --password       Docker Username's password"
-    echo " -n, --namespace      Docker namespace (default: $DEFAULT_DOCKER_NAMESPACE)"
-    echo " -v, --image-version  Docker Image Version. Either use this option or set env variable BUILD_BUILDNUMBER"
-    echo " -t, --target-arch    Target architecture (default: uname -m)"
-    echo "--base-tag            Override the tag of the base image (e.g., to use a different version of .NET Core)"
-    echo "--bin-dir             Directory containing the output binaries. Either use this option or set env variable BUILD_BINARIESDIRECTORY"
-    echo "--skip-push           Build images, but don't push them"
-    exit 1;
+    echo " -v, --version        App version. Either use this option or set env variable BUILD_BUILDNUMBER"
+    exit 1
 }
 
-print_help_and_exit()
-{
+print_help_and_exit() {
     echo "Run $SCRIPT_NAME --help for more information."
     exit 1
 }
@@ -73,199 +88,171 @@ print_help_and_exit()
 ###############################################################################
 # Obtain and validate the options supported by this script
 ###############################################################################
-process_args()
-{
+process_args() {
     save_next_arg=0
-    for arg in "$@"
-    do
+    for arg in $@; do
         if [[ ${save_next_arg} -eq 1 ]]; then
-            DOCKER_REGISTRY="$arg"
+            APP="$arg"
             save_next_arg=0
         elif [[ ${save_next_arg} -eq 2 ]]; then
-            DOCKER_USERNAME="$arg"
-            save_next_arg=0
-        elif [[ ${save_next_arg} -eq 3 ]]; then
-            DOCKER_PASSWORD="$arg"
-            save_next_arg=0
-        elif [[ ${save_next_arg} -eq 4 ]]; then
-            DOCKER_IMAGEVERSION="$arg"
-            save_next_arg=0
-        elif [[ ${save_next_arg} -eq 5 ]]; then
             BUILD_BINARIESDIRECTORY="$arg"
             save_next_arg=0
-        elif [[ ${save_next_arg} -eq 6 ]]; then
-            BASE_TAG="$arg"
-            save_next_arg=0
-        elif [[ ${save_next_arg} -eq 7 ]]; then
-            ARCH="$arg"
-            check_arch
-            save_next_arg=0
-        elif [[ ${save_next_arg} -eq 8 ]]; then
-            PROJECT="$arg"
-            save_next_arg=0
-        elif [[ ${save_next_arg} -eq 9 ]]; then
+        elif [[ ${save_next_arg} -eq 3 ]]; then
             DOCKER_IMAGENAME="$arg"
             save_next_arg=0
-        elif [[ ${save_next_arg} -eq 10 ]]; then
-            DOCKER_NAMESPACE="$arg"
+        elif [[ ${save_next_arg} -eq 4 ]]; then
+            PLATFORMS="$arg"
+            check_platforms
+            save_next_arg=0
+        elif [[ ${save_next_arg} -eq 5 ]]; then
+            DOCKER_REGISTRY="$arg"
+            save_next_arg=0
+        elif [[ ${save_next_arg} -eq 6 ]]; then
+            DOCKER_IMAGEVERSION="$arg"
             save_next_arg=0
         else
             case "$arg" in
-                "-h" | "--help" ) usage;;
-                "-r" | "--registry" ) save_next_arg=1;;
-                "-u" | "--username" ) save_next_arg=2;;
-                "-p" | "--password" ) save_next_arg=3;;
-                "-v" | "--image-version" ) save_next_arg=4;;
-                "--bin-dir" ) save_next_arg=5;;
-                "--base-tag" ) save_next_arg=6;;
-                "-t" | "--target-arch" ) save_next_arg=7;;
-                "-P" | "--project" ) save_next_arg=8;;
-                "-i" | "--image-name" ) save_next_arg=9;;
-                "-n" | "--namespace" ) save_next_arg=10;;
-                "--skip-push" ) SKIP_PUSH=1 ;;
-                * ) usage;;
+            "-a" | "--app") save_next_arg=1 ;;
+            "-b" | "--bin") save_next_arg=2 ;;
+            "-h" | "--help") usage ;;
+            "-n" | "--name") save_next_arg=3 ;;
+            "-p" | "--platforms") save_next_arg=4 ;;
+            "-r" | "--registry") save_next_arg=5 ;;
+            "-v" | "--version") save_next_arg=6 ;;
+            *) echo "Unknown argument '$arg'"; usage ;;
             esac
         fi
     done
 
-    if [[ -z ${DOCKER_REGISTRY} ]]; then
-        echo "Registry parameter invalid"
+    if [[ -z "$DOCKER_REGISTRY" ]]; then
+        echo 'The --registry parameter is required'
         print_help_and_exit
     fi
 
-    if [[ ${SKIP_PUSH} -eq 0 ]]; then
-        if [[ -z ${DOCKER_USERNAME} ]]; then
-            echo "Docker username parameter invalid"
-            print_help_and_exit
-        fi
-
-        if [[ -z ${DOCKER_PASSWORD} ]]; then
-            echo "Docker password parameter invalid"
-            print_help_and_exit
-        fi
-    fi
-
-    if [[ -z ${DOCKER_IMAGENAME} ]]; then
-        echo "Docker image name parameter invalid"
+    if [[ -z "$DOCKER_IMAGENAME" ]]; then
+        echo 'The --name parameter is required'
         print_help_and_exit
     fi
 
-    if [[ -z ${DOCKER_IMAGEVERSION} ]]; then
-        if [[ -n "${BUILD_BUILDNUMBER}" ]]; then
-            DOCKER_IMAGEVERSION=${BUILD_BUILDNUMBER}
+    if [[ -z "$DOCKER_IMAGEVERSION" ]]; then
+        if [[ -n "$BUILD_BUILDNUMBER" ]]; then
+            DOCKER_IMAGEVERSION="$BUILD_BUILDNUMBER"
         else
-            echo "Docker image version not found."
+            echo 'The --version parameter is required if BUILD_BUILDNUMBER is not set'
             print_help_and_exit
         fi
     fi
 
-    if [[ -z ${BUILD_BINARIESDIRECTORY} ]] || [[ ! -d ${BUILD_BINARIESDIRECTORY} ]]; then
-        echo "Bin directory does not exist or is invalid"
+    if [[ -z "$APP" ]]; then
+        echo 'The --app parameter is required'
         print_help_and_exit
     fi
 
-    PUBLISH_DIR=${BUILD_BINARIESDIRECTORY}/publish
-
-    if [[ ! -d ${PUBLISH_DIR} ]]; then
-        echo "Publish directory does not exist or is invalid"
+    if [[ -z "$BUILD_BINARIESDIRECTORY" ]]; then
+        echo 'The --bin parameter is required if BUILD_BINARIESDIRECTORY is not set'
         print_help_and_exit
     fi
 
-    EXE_DOCKER_DIR=${PUBLISH_DIR}/${PROJECT}/docker
-
-    if [[ -z ${EXE_DOCKER_DIR} ]] || [[ ! -d ${EXE_DOCKER_DIR} ]]; then
-        echo "No docker directory for $PROJECT at $EXE_DOCKER_DIR"
+    if [[ ! -d "$BUILD_BINARIESDIRECTORY" ]]; then
+        echo "Binaries directory '$BUILD_BINARIESDIRECTORY' not found"
         print_help_and_exit
     fi
 
-    DOCKERFILE="$EXE_DOCKER_DIR/linux/$ARCH/Dockerfile"
-    if [[ ! -f ${DOCKERFILE} ]]; then
-        echo "No Dockerfile at $DOCKERFILE"
+    APP_BINARIESDIRECTORY="$BUILD_BINARIESDIRECTORY/publish/$APP"
+    if [[ ! -d "$APP_BINARIESDIRECTORY" ]]; then
+        echo "Application binaries directory '$APP_BINARIESDIRECTORY' not found"
         print_help_and_exit
     fi
-}
 
-###############################################################################
-# Build docker image and push it to private repo
-#
-#   @param[1] - imagename; Name of the docker edge image to publish; Required;
-#   @param[2] - arch; Arch of base image; Required;
-#   @param[3] - dockerfile; Path to the dockerfile; Optional;
-#               Leave as "" and defaults will be chosen.
-#   @param[4] - context_path; docker context path; Required;
-#   @param[5] - build_args; docker context path; Optional;
-#               Leave as "" and no build args will be supplied.
-###############################################################################
-docker_build_and_tag_and_push()
-{
-    imagename="$1"
-    arch="$2"
-    dockerfile="$3"
-    context_path="$4"
-    build_args="$5"
-
-    if [[ -z "${imagename}" ]] || [[ -z "${arch}" ]] || [[ -z "${context_path}" ]]; then
-        echo "Error: Arguments are invalid [$imagename] [$arch] [$context_path]"
-        exit 1
-    fi
-
-    echo "Building and pushing Docker image $imagename for $arch"
-    docker_build_cmd="docker build --no-cache"
-    docker_build_cmd+=" -t $DOCKER_REGISTRY/$DOCKER_NAMESPACE/$imagename:$DOCKER_IMAGEVERSION-linux-$arch"
-    if [[ -n "${dockerfile}" ]]; then
-        docker_build_cmd+=" --file $dockerfile"
-    fi
-    docker_build_cmd+=" $build_args $context_path"
-    
-    echo "Running... $docker_build_cmd"
-
-    ${docker_build_cmd}
-
-    if [[ $? -ne 0 ]]; then
-        echo "Docker build failed with exit code $?"
-        exit 1
-    fi
-
-    if [[ ${SKIP_PUSH} -eq 0 ]]; then
-        docker_push_cmd="docker push $DOCKER_REGISTRY/$DOCKER_NAMESPACE/$imagename:$DOCKER_IMAGEVERSION-linux-$arch"
-        echo "Running... $docker_push_cmd"
-        ${docker_push_cmd}
-        if [[ $? -ne 0 ]]; then
-            echo "Docker push failed with exit code $?"
-            exit 1
+    # The API proxy module has separate Dockerfiles for each supported platform
+    if [[ "$APP" == 'api-proxy-module' ]]; then
+        if [[ ! -f "$APP_BINARIESDIRECTORY/docker/linux/amd64/Dockerfile" ]]; then
+            echo "No Dockerfile at '$APP_BINARIESDIRECTORY/docker/linux/Dockerfile'"
+            print_help_and_exit
+        elif [[ ! -f "$APP_BINARIESDIRECTORY/docker/linux/arm64v8/Dockerfile" ]]; then
+            echo "No Dockerfile at '$APP_BINARIESDIRECTORY/docker/linux/Dockerfile'"
+            print_help_and_exit
+        elif [[ ! -f "$APP_BINARIESDIRECTORY/docker/linux/arm32v7/Dockerfile" ]]; then
+            echo "No Dockerfile at '$APP_BINARIESDIRECTORY/docker/linux/Dockerfile'"
+            print_help_and_exit
         fi
+    elif [[ ! -f "$APP_BINARIESDIRECTORY/docker/linux/Dockerfile" ]]; then
+        echo "No Dockerfile at '$APP_BINARIESDIRECTORY/docker/linux/Dockerfile'"
+        print_help_and_exit
     fi
 
-    return $?
+    if ! command -v jq > /dev/null; then
+        command jq
+    fi
 }
 
 ###############################################################################
-# Main Script Execution
+# Main script execution
 ###############################################################################
-check_arch
-process_args "$@"
+process_args $@
 
-# log in to container registry
-if [[ ${SKIP_PUSH} -eq 0 ]]; then
-    docker login "${DOCKER_REGISTRY}" -u "${DOCKER_USERNAME}" -p "${DOCKER_PASSWORD}"
-    if [[ $? -ne 0 ]]; then
-        echo "Docker login failed!"
-        exit 1
-    fi
+DOCKERFILE="$APP_BINARIESDIRECTORY/docker/linux/Dockerfile"
+IMAGE="$DOCKER_REGISTRY/$DOCKER_NAMESPACE/$DOCKER_IMAGENAME:$DOCKER_IMAGEVERSION"
+
+echo "Building and pushing image '$IMAGE'"
+
+docker buildx create --use --bootstrap
+trap "docker buildx rm" EXIT
+
+if [[ "$APP" == 'api-proxy-module' ]]; then
+    # First, build each platform-specific image from a separate Dockerfile. This will create
+    # intermediate manifest lists, each pointing to:
+    #   1. a platform-specific image
+    #   2. a provenance artifact
+    PLAT_IMAGES=()
+    IFS=',' read -a PLAT_ARR <<< "$PLATFORMS"
+    for PLATFORM in ${PLAT_ARR[@]}
+    do
+        CONVERTED_PLATFORM="$(convert_platform $PLATFORM)"
+        PLAT_IMAGE="$IMAGE-$CONVERTED_PLATFORM"
+
+        docker buildx build \
+            --no-cache \
+            --platform "$PLATFORM" \
+            --file "$APP_BINARIESDIRECTORY/docker/${CONVERTED_PLATFORM/-/\/}/Dockerfile" \
+            --output=type=registry,name=$PLAT_IMAGE \
+            --build-arg EXE_DIR=. \
+            $APP_BINARIESDIRECTORY
+
+        PLAT_IMAGES+=( $PLAT_IMAGE )
+    done
+
+    # Next, create the multi-platform image from the platform-specific images
+    docker buildx imagetools create --tag $IMAGE ${PLAT_IMAGES[@]}
+
+    # Finally, tag each platform-specific image. This will untag the intermediate manifest lists,
+    # which are no longer needed.
+    source "$SCRIPT_DIR/manifest-tools.sh"
+
+    REGISTRY="$DOCKER_REGISTRY" \
+    REPOSITORY="$DOCKER_NAMESPACE/$DOCKER_IMAGENAME" \
+    TAG="$DOCKER_IMAGEVERSION" \
+    copy_manifests
+else
+    # First, build the complete multi-platform image
+    docker buildx build \
+        --no-cache \
+        --platform "$PLATFORMS" \
+        --file "$DOCKERFILE" \
+        --output=type=registry,name=$IMAGE \
+        --build-arg EXE_DIR=. \
+        "$APP_BINARIESDIRECTORY"
+
+    # Next, tag each platform-specific image
+    source "$SCRIPT_DIR/manifest-tools.sh"
+
+    PLATFORM_MAP="$(echo "$DEFAULT_PLATFORM_MAP" | jq -c --arg platforms "$PLATFORMS" '
+        map(select(.platform == ($platforms | split(",")[])))
+    ')" \
+    REGISTRY="$DOCKER_REGISTRY" \
+    REPOSITORY="$DOCKER_NAMESPACE/$DOCKER_IMAGENAME" \
+    TAG="$DOCKER_IMAGEVERSION" \
+    copy_manifests
 fi
 
-build_args=( "EXE_DIR=." )
-[[ -z "$BASE_TAG" ]] || build_args+=( "base_tag=$BASE_TAG" )
-
-# push image
-docker_build_and_tag_and_push \
-    "$DOCKER_IMAGENAME" \
-    "$ARCH" \
-    "$DOCKERFILE" \
-    "$PUBLISH_DIR/$PROJECT" \
-    "${build_args[@]/#/--build-arg }"
-[[ $? -eq 0 ]] || exit $?
-
-echo "Done building and pushing Docker image $DOCKER_IMAGENAME for $PROJECT"
-
-[[ $? -eq 0 ]] || exit $?
+echo "Built and pushed image '$IMAGE'"

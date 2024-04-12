@@ -12,13 +12,13 @@
     clippy::missing_errors_doc,
     clippy::module_name_repetitions,
     clippy::must_use_candidate,
-    clippy::pub_enum_variant_names,
     clippy::similar_names,
     clippy::single_match_else,
     clippy::too_many_arguments,
     clippy::too_many_lines,
     clippy::use_self,
-    clippy::let_unit_value
+    clippy::let_unit_value,
+    clippy::map_err_ignore
 )]
 
 pub static PROTOCOL_NAME: &str = "MQTT";
@@ -27,7 +27,7 @@ pub const PROTOCOL_LEVEL: u8 = 0x04;
 
 mod client;
 pub use client::{
-    Client, ConnectionError, Error, Event, IoSource, PublishError, PublishHandle,
+    Client, ConnectionError, Error, Event, IoSource, PublishError, PublishHandle, PublishRequest,
     ReceivedPublication, ShutdownError, ShutdownHandle, SubscriptionUpdateEvent,
     UpdateSubscriptionError, UpdateSubscriptionHandle,
 };

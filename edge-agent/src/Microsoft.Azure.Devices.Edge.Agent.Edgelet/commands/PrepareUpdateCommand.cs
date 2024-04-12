@@ -1,9 +1,11 @@
 // Copyright (c) Microsoft. All rights reserved.
 namespace Microsoft.Azure.Devices.Edge.Agent.Edgelet.Commands
 {
+    using System;
     using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Azure.Devices.Edge.Agent.Core;
+    using Microsoft.Azure.Devices.Edge.Agent.Core.PlanRunner;
     using Microsoft.Azure.Devices.Edge.Agent.Edgelet.Models;
     using Microsoft.Azure.Devices.Edge.Util;
 
@@ -20,7 +22,7 @@ namespace Microsoft.Azure.Devices.Edge.Agent.Edgelet.Commands
 
         public string Id => $"PrepareUpdateCommand({this.module.Name})";
 
-        public string Show() => $"Prepare update module {this.module.Name}";
+        public string Show() => $"Prepare module {this.module.Name}";
 
         public Task ExecuteAsync(CancellationToken token)
         {

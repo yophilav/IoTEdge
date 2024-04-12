@@ -1,0 +1,65 @@
+# Prefix build number with "e2e" to ensure images pushed to ACR by this
+# pipeline don't conflict with images pushed by the CI build pipeline.
+name: e2e.$(Date:yyyyMMdd).$(Rev:r)
+
+trigger: none
+pr:
+  branches:
+    include:
+      - main
+      - release/*
+  paths:
+    exclude:
+      - platform-validation
+      - release/1.1-k8s-preview
+
+variables:
+  Codeql.Enabled: false
+  DisableDockerDetector: true
+
+resources:
+  pipelines:
+  - pipeline: ci-build
+    source: 'Azure-IoT-Edge-Core CI Build'
+    branch: 'release/1.4'
+
+stages:
+  
+  - template: ../misc/templates/build-images.yaml
+    parameters:
+      E2EBuild : true
+
+  - template: ../misc/templates/build-packages.yaml
+    parameters:
+      E2EBuild : true
+
+  - stage: RunE2ETest
+    displayName: End-to-End Test
+    pool:
+      name: $(pool.linux.name)
+      demands:
+        - ImageOverride -equals agent-aziotedge-ubuntu-20.04-msmoby
+    dependsOn:
+      - CheckBuildImages
+      - CheckBuildPackages
+      - BuildImages
+      - BuildPackages
+    condition: or(succeeded('BuildImages'),succeeded('BuildPackages'))
+    variables:
+      builtImages: $[stageDependencies.CheckBuildImages.check_source_change_runtime.outputs['check_files.RUNTIMECHANGES']]
+      builtPackages: $[stageDependencies.CheckBuildPackages.check_source_change_edgelet.outputs['check_files.EDGELETCHANGES']]
+    jobs:
+      - job: ubuntu_2004_msmoby
+        displayName: Ubuntu 20.04 with iotedge-moby
+        variables:
+          verbose: false
+          os: linux
+          arch: amd64
+          artifactName: iotedged-ubuntu20.04-amd64
+          identityServiceArtifactName: packages_ubuntu-20.04_amd64
+          identityServicePackageFilter: aziot-identity-service_*_amd64.deb
+        steps:
+        - template: ../e2e/templates/e2e-setup.yaml
+        - template: ../e2e/templates/e2e-run.yaml
+
+    

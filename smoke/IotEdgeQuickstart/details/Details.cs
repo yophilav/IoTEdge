@@ -10,13 +10,16 @@ namespace IotEdgeQuickstart.Details
     using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Azure.Devices;
-    using Microsoft.Azure.Devices.Common;
+    using Microsoft.Azure.Devices.Common.Exceptions;
+    using Microsoft.Azure.Devices.Edge.Test.Common;
     using Microsoft.Azure.Devices.Edge.Util;
+    using Microsoft.Azure.Devices.Edge.Util.TransientFaultHandling;
     using Microsoft.Azure.Devices.Shared;
     using Microsoft.Azure.EventHubs;
     using Newtonsoft.Json;
     using Newtonsoft.Json.Linq;
     using EventHubClientTransportType = Microsoft.Azure.EventHubs.TransportType;
+    using RetryPolicy = Microsoft.Azure.Devices.Edge.Util.TransientFaultHandling.RetryPolicy;
     using ServiceClientTransportType = Microsoft.Azure.Devices.TransportType;
 
     public class Details
@@ -209,10 +212,10 @@ namespace IotEdgeQuickstart.Details
             this.proxy = proxy.Map(p => new WebProxy(p) as IWebProxy);
         }
 
-        protected Task VerifyEdgeIsNotAlreadyActive()
+        protected Task UpdatePackageState()
         {
-            Console.WriteLine("Verifying if edge is not already active.");
-            return this.bootstrapper.VerifyNotActive();
+            Console.WriteLine("Checking if aziot-edge and aziot-identity-service are installed.");
+            return this.bootstrapper.UpdatePackageState();
         }
 
         protected Task VerifyBootstrapperDependencies()
@@ -298,7 +301,7 @@ namespace IotEdgeQuickstart.Details
 
         protected async Task VerifyEdgeAgentIsConnectedToIotHub()
         {
-            Console.WriteLine("Verifying if edge is connected to IoThub");
+            Console.WriteLine("Verifying if edge is connected to IoT Hub.");
             using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(600))) // Long timeout is needed because registry manager takes a while for the device identity to be usable
             {
                 Exception savedException = null;
@@ -356,7 +359,15 @@ namespace IotEdgeQuickstart.Details
             }
 
             var config = JsonConvert.DeserializeObject<ConfigurationContent>(deployJson);
-            return this.context.RegistryManager.ApplyConfigurationContentOnDeviceAsync(this.context.DeviceId, config);
+
+            var retryStrategy = new Incremental(15, RetryStrategy.DefaultRetryInterval, RetryStrategy.DefaultRetryIncrement);
+            var retryPolicy = new RetryPolicy(new TransientNetworkErrorDetectionStrategy(), retryStrategy);
+            return retryPolicy.ExecuteAsync(
+                async () =>
+            {
+                Console.WriteLine("Attempting to apply configuration on device...");
+                await this.context.RegistryManager.ApplyConfigurationContentOnDeviceAsync(this.context.DeviceId, config);
+            }, new CancellationTokenSource(TimeSpan.FromMinutes(10)).Token);
         }
 
         protected async Task VerifyDataOnIoTHub(string moduleId)
@@ -528,13 +539,20 @@ namespace IotEdgeQuickstart.Details
             await this.parentEdgeDevice.ForEachAsync(async p =>
             {
                 var parentDevice = await rm.GetDeviceAsync(p);
-                device.ParentScopes = new[] { parentDevice.Scope };
+                device.ParentScopes.Add(parentDevice.Scope);
             });
 
             IotHubConnectionStringBuilder builder = IotHubConnectionStringBuilder.Create(this.iothubConnectionString);
             Console.WriteLine($"Registering device '{device.Id}' on IoT hub '{builder.HostName}'");
 
-            device = await rm.AddDeviceAsync(device);
+            var retryStrategy = new Incremental(15, RetryStrategy.DefaultRetryInterval, RetryStrategy.DefaultRetryIncrement);
+            var retryPolicy = new RetryPolicy(new TransientNetworkErrorDetectionStrategy(), retryStrategy);
+            await retryPolicy.ExecuteAsync(
+                async () =>
+            {
+                Console.WriteLine("Attempting to create device identity...");
+                device = await rm.AddDeviceAsync(device);
+            }, new CancellationTokenSource(TimeSpan.FromMinutes(10)).Token);
 
             this.context = new DeviceContext(device, builder.ToString(), rm, true);
         }
@@ -594,6 +612,14 @@ namespace IotEdgeQuickstart.Details
                 });
 
             return (deployJson, new[] { edgeAgentImage, edgeHubImage, tempSensorImage });
+        }
+    }
+
+    class TransientNetworkErrorDetectionStrategy : ITransientErrorDetectionStrategy
+    {
+        public bool IsTransient(Exception ex)
+        {
+            return ex is IotHubCommunicationException && ex.Message.Contains("The POST operation timed out");
         }
     }
 
