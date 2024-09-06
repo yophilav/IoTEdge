@@ -19,7 +19,7 @@ steps:
         TestRootCaCertificate,
         TestRootCaKey,
         TestRootCaPassword
-
+  - task: NuGetAuthenticate@1
   - bash: | 
       echo "Built Images Result is '$(builtImages)'"
       echo "Built Packages Result is '$(builtPackages)'"

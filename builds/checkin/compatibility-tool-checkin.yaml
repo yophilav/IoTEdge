@@ -45,5 +45,6 @@ jobs:
           sudo apt-get -y install shellcheck
           shellcheck --severity=error ./platform-validation/scripts/aziot-compatibility.sh
         displayName: Perform Shell Check
+      - task: NuGetAuthenticate@1
       - bash: platform-validation/scripts/aziot-compatibility.sh -a aziotedge
         displayName: Run Compatibility Tool
